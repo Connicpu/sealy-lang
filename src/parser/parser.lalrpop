@@ -1,0 +1,348 @@
+use lexer;
+use parser::ast;
+use std::str::FromStr;
+
+grammar<'input>;
+
+pub seal = Module;
+
+Module: () = {
+    Item* => (),
+};
+
+Item: () = {
+    LF => (),
+    Function => (),
+};
+
+Function: () = {
+    "fn" Identifier "(" Comma<Identifier> ")" Scope => ()
+};
+
+Scope: () = {
+    "{" End* (Statement End+)* Statement? "}" => ()
+};
+
+Statement: () = {
+    VariableDecl => (),
+    AssignmentOp => (),
+    Expression => (),
+};
+
+VariableDecl: () = {
+    "let" DeclPattern ("=" Expression)? => (),
+};
+
+AssignmentOp: () = {
+    AssignPattern AssignOps Expression => (),
+};
+
+Expression: () = {
+    Scope => (),
+    Lambda,
+    BinaryOperators,
+};
+
+Lambda: () = {
+    LambdaHeader Expression => (),
+};
+
+// Returns the list of parameter names
+LambdaHeader: Vec<String> = {
+    "||" => vec![],
+    "|" <Comma<Identifier>> "|",
+};
+
+AssignOps: ast::AssignOp = {
+    "=" => ast::AssignOp::Assign,
+    "||=" => ast::AssignOp::LogicalOr,
+    "&&=" => ast::AssignOp::LogicalAnd,
+    "|=" => ast::AssignOp::BitOr,
+    "&=" => ast::AssignOp::BitAnd,
+    "^=" => ast::AssignOp::BitXor,
+    "<<=" => ast::AssignOp::LShiftLeft,
+    ">>=" => ast::AssignOp::AShiftRight,
+    ">>>=" => ast::AssignOp::LShiftRight,
+    "+=" => ast::AssignOp::Add,
+    "-=" => ast::AssignOp::Sub,
+    "*=" => ast::AssignOp::Mul,
+    "/=" => ast::AssignOp::Div,
+    "%=" => ast::AssignOp::Rem,
+    "mod=" => ast::AssignOp::Mod,
+};
+
+ImplOp: ast::BinOp = {
+    "impls" => ast::BinOp::Implements,
+};
+
+RangeOps: ast::BinOp = {
+    ".." => ast::BinOp::RangeExclusive,
+    "..." => ast::BinOp::RangeInclusive,
+};
+
+LogicalOr: ast::BinOp = {
+    "||" => ast::BinOp::LogicalOr
+};
+
+LogicalAnd: ast::BinOp = {
+    "&&" => ast::BinOp::LogicalAnd
+};
+
+EqualOps: ast::BinOp = {
+    "==" => ast::BinOp::Equal,
+    "!=" => ast::BinOp::NotEqual,
+    "<" => ast::BinOp::LessThan,
+    ">" => ast::BinOp::GreaterThan,
+    "<=" => ast::BinOp::LessOrEqual,
+    ">=" => ast::BinOp::GreaterOrEqual,
+};
+
+BitOps: ast::BinOp = {
+    "&" => ast::BinOp::BitAnd,
+    "|" => ast::BinOp::BitOr,
+    "^" => ast::BinOp::BitXor,
+};
+
+ShiftOps: ast::BinOp = {
+    "<<" => ast::BinOp::LShiftLeft,
+    ">>" => ast::BinOp::AShiftRight,
+    ">>>" => ast::BinOp::LShiftRight,
+};
+
+AddSubOps: ast::BinOp = {
+    "+" => ast::BinOp::Add,
+    "-" => ast::BinOp::Sub,
+};
+
+MulDivOps: ast::BinOp = {
+    "*" => ast::BinOp::Mul,
+    "/" => ast::BinOp::Div,
+    "%" => ast::BinOp::Rem,
+    "/%" => ast::BinOp::DivRem,
+    "mod" => ast::BinOp::Mod,
+};
+
+BinaryOperators = ImplOperator;
+ImplOperator = Tier<ImplOp, RangeOperators>;
+RangeOperators = Tier<RangeOps, LogicalOperators>;
+LogicalOperators = Tier<LogicalOr, Tier<LogicalAnd, EqualityOperators>>;
+EqualityOperators = Tier<EqualOps, BitwiseOperators>;
+BitwiseOperators = Tier<BitOps, ShiftOperators>;
+ShiftOperators = Tier<ShiftOps, AddSubOperators>;
+AddSubOperators = Tier<AddSubOps, MulDivOperators>;
+MulDivOperators = Tier<MulDivOps, UnaryOperators>;
+
+UnaryOperators: () = {
+    "-" UnaryOperators => (),
+    "!" UnaryOperators => (),
+    Dereference,
+};
+
+Dereference = DereferenceImp<Term>;
+DereferenceImp<N>: () = {
+    Dereference "." Identifier => (),
+    Dereference "." DecIntegerLiteral => (), // tuple access
+    Dereference "(" Comma<Expression> ")" => (),
+    Dereference "[" Comma<Expression> "]" => (),
+    N,
+};
+
+TypeName: () = {
+    Identifier ("." Identifier)* => (),
+};
+
+Term: () = {
+    "(" Expression ")" => (),
+    Identifier => (),
+    Literal Identifier? => (),
+    Tuple => (),
+    "nil" => (),
+};
+
+DeclPattern: () = {
+    Identifier,
+    "(" Comma<DeclPattern> ".."? ")" => (),
+    "[" Comma<DeclPattern> ".."? "]" => (),
+    "<" Comma<Identifier> ".."? ">" => (),
+    "{" Comma<(Identifier (":" DeclPattern)?)> "}" => (),
+};
+
+AssignPattern: () = {
+    DereferenceImp<Identifier> => (),
+};
+
+Tuple: () = {
+    "(" ")" => (), // empty tuple
+    "(" Expression "," Comma<Expression> ")" => () // real tuple
+};
+
+Literal: () = {
+    IntegerLiteral => (),
+    FloatLiteral => (),
+    StringLiteral => (),
+    SimdLiteral => (),
+    ObjectLiteral => (),
+};
+
+ObjectLiteral: () = {
+    "new" TypeName? "{" Comma<ObjectLiteralItem> "}" => (),
+};
+
+ObjectLiteralItem: () = {
+    Identifier (":" Expression)? => (),
+};
+
+ArrayLiteral: () = {
+    "[" Comma<Expression> "]" => (),
+    "[" Expression ";" Expression "]" => (),
+};
+
+SimdLiteral: () = {
+    "<" Comma<BitwiseOperators> ">" => (),
+};
+
+IntegerLiteral: i64 = {
+    DecIntegerLiteral,
+    HEX_LITERAL => i64::from_str_radix(&<>[2..], 16).unwrap(),
+    OCT_LITERAL => i64::from_str_radix(&<>[2..], 8).unwrap(),
+    BIN_LITERAL => i64::from_str_radix(&<>[2..], 2).unwrap(),
+};
+
+DecIntegerLiteral: i64 = {
+    INT_LITERAL => i64::from_str_radix(<>, 10).unwrap(),
+};
+
+FloatLiteral: f64 = {
+    FLOAT_LITERAL => f64::from_str(<>).unwrap(),
+};
+
+// TODO: Parse string literal into actual string data
+StringLiteral: String = {
+    STR_LITERAL => (<>).into()
+};
+
+Identifier: String = IDENTIFIER => <>.into();
+Label: String = LABEL => (<>[1..]).into();
+
+End: () = {
+    LF => (),
+    ";" => (),
+};
+
+Comma<T>: Vec<T> = {
+    <v:(<T> ",")*> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            let mut v = v;
+            v.push(e);
+            v
+        }
+    }
+};
+
+Tier<Op, NextTier>: () = {
+    Tier<Op, NextTier> Op NextTier => (),
+    NextTier
+};
+
+extern {
+    type Location = lexer::Location;
+    type Error = lexer::LexicalError;
+
+    enum lexer::Tok<'input> {
+        "break" => (lexer::TokenType::Break, <&'input str>),
+        "const" => (lexer::TokenType::Const, <&'input str>),
+        "continue" => (lexer::TokenType::Continue, <&'input str>),
+        "else" => (lexer::TokenType::Else, <&'input str>),
+        "enum" => (lexer::TokenType::Enum, <&'input str>),
+        "extern" => (lexer::TokenType::Extern, <&'input str>),
+        "fn" => (lexer::TokenType::Function, <&'input str>),
+        "for" => (lexer::TokenType::For, <&'input str>),
+        "if" => (lexer::TokenType::If, <&'input str>),
+        "impl" => (lexer::TokenType::Impl, <&'input str>),
+        "impls" => (lexer::TokenType::Impls, <&'input str>),
+        "in" => (lexer::TokenType::In, <&'input str>),
+        "let" => (lexer::TokenType::Let, <&'input str>),
+        "loop" => (lexer::TokenType::Loop, <&'input str>),
+        "mod" => (lexer::TokenType::Mod, <&'input str>),
+        "new" => (lexer::TokenType::New, <&'input str>),
+        "nil" => (lexer::TokenType::Nil, <&'input str>),
+        "return" => (lexer::TokenType::Return, <&'input str>),
+        "throw" => (lexer::TokenType::Throw, <&'input str>),
+        "trait" => (lexer::TokenType::Trait, <&'input str>),
+        "type" => (lexer::TokenType::Type, <&'input str>),
+        "use" => (lexer::TokenType::Use, <&'input str>),
+        "while" => (lexer::TokenType::While, <&'input str>),
+
+        "{" => (lexer::TokenType::OpenCurly, <&'input str>),
+        "}" => (lexer::TokenType::CloseCurly, <&'input str>),
+        "(" => (lexer::TokenType::OpenParen, <&'input str>),
+        ")" => (lexer::TokenType::CloseParen, <&'input str>),
+        "[" => (lexer::TokenType::OpenBracket, <&'input str>),
+        "]" => (lexer::TokenType::CloseBracket, <&'input str>),
+        ";" => (lexer::TokenType::Semicolon, <&'input str>),
+        ":" => (lexer::TokenType::Colon, <&'input str>),
+        "," => (lexer::TokenType::Comma, <&'input str>),
+        "?" => (lexer::TokenType::Question, <&'input str>),
+        "." => (lexer::TokenType::Dot, <&'input str>),
+
+        ".." => (lexer::TokenType::RangeExclusive, <&'input str>),
+        "..." => (lexer::TokenType::RangeInclusive, <&'input str>),
+
+        "==" => (lexer::TokenType::Equal, <&'input str>),
+        "!=" => (lexer::TokenType::NotEqual, <&'input str>),
+        "<" => (lexer::TokenType::LessThan, <&'input str>),
+        "<=" => (lexer::TokenType::LessOrEqual, <&'input str>),
+        ">" => (lexer::TokenType::GreaterThan, <&'input str>),
+        ">=" => (lexer::TokenType::GreaterOrEqual, <&'input str>),
+
+        "!" => (lexer::TokenType::Not, <&'input str>),
+        "~" => (lexer::TokenType::Tilde, <&'input str>),
+        "@" => (lexer::TokenType::At, <&'input str>),
+
+        "&&" => (lexer::TokenType::LogicalAnd, <&'input str>),
+        "||" => (lexer::TokenType::LogicalOr, <&'input str>),
+        "&&=" => (lexer::TokenType::LogicalAndAssign, <&'input str>),
+        "||=" => (lexer::TokenType::LogicalOrAssign, <&'input str>),
+
+        "+" => (lexer::TokenType::Add, <&'input str>),
+        "-" => (lexer::TokenType::Sub, <&'input str>),
+        "*" => (lexer::TokenType::Mul, <&'input str>),
+        "/" => (lexer::TokenType::Div, <&'input str>),
+        "%" => (lexer::TokenType::Rem, <&'input str>),
+        "/%" => (lexer::TokenType::DivRem, <&'input str>),
+        "&" => (lexer::TokenType::BitAnd, <&'input str>),
+        "|" => (lexer::TokenType::BitOr, <&'input str>),
+        "^" => (lexer::TokenType::BitXor, <&'input str>),
+        "<<" => (lexer::TokenType::Shl, <&'input str>),
+        ">>" => (lexer::TokenType::Shr, <&'input str>),
+        ">>>" => (lexer::TokenType::LShr, <&'input str>),
+
+        "=" => (lexer::TokenType::Assign, <&'input str>),
+        "+=" => (lexer::TokenType::AddAssign, <&'input str>),
+        "-=" => (lexer::TokenType::SubAssign, <&'input str>),
+        "*=" => (lexer::TokenType::MulAssign, <&'input str>),
+        "/=" => (lexer::TokenType::DivAssign, <&'input str>),
+        "%=" => (lexer::TokenType::RemAssign, <&'input str>),
+        "&=" => (lexer::TokenType::BitAndAssign, <&'input str>),
+        "|=" => (lexer::TokenType::BitOrAssign, <&'input str>),
+        "^=" => (lexer::TokenType::BitXorAssign, <&'input str>),
+        "<<=" => (lexer::TokenType::ShlAssign, <&'input str>),
+        ">>=" => (lexer::TokenType::ShrAssign, <&'input str>),
+        ">>>=" => (lexer::TokenType::LShrAssign, <&'input str>),
+        "mod=" => (lexer::TokenType::ModAssign, <&'input str>),
+
+        LF => (lexer::TokenType::NewLine, <&'input str>),
+        DOC_COMMENT => (lexer::TokenType::DocComment, <&'input str>),
+        MOD_DOC_COMMENT => (lexer::TokenType::ModuleDocComment, <&'input str>),
+        IDENTIFIER => (lexer::TokenType::Identifier, <&'input str>),
+        INT_LITERAL => (lexer::TokenType::IntLiteral, <&'input str>),
+        HEX_LITERAL => (lexer::TokenType::HexLiteral, <&'input str>),
+        OCT_LITERAL => (lexer::TokenType::OctLiteral, <&'input str>),
+        BIN_LITERAL => (lexer::TokenType::BinLiteral, <&'input str>),
+        FLOAT_LITERAL => (lexer::TokenType::FloatLiteral, <&'input str>),
+        STR_LITERAL => (lexer::TokenType::StringLiteral, <&'input str>),
+        CHAR_LITERAL => (lexer::TokenType::CharLiteral, <&'input str>),
+        LABEL => (lexer::TokenType::Label, <&'input str>),
+    }
+}

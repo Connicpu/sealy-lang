@@ -1,0 +1,31 @@
+fn main() {
+    let x = foo()
+        .goo()
+    let y = 5
+
+    foo(); boo()
+
+    let (x, y) = (y, x)
+
+    let { x, y } = bar()
+    let <x, y> = baz()
+    let <x, y, ..> = baq()
+    let [(a, b), (c, d)] = qux()
+
+    x += 1
+    y += 2
+
+    let z = (x mod y + 5)[0]
+
+    foo()
+    -x
+
+    big.ass.expression.to.get.to.an.array[at, an, index]
+        += my.awesome().value
+
+    let w = <1, 2, 3>
+
+    1_000
+
+    90deg.to_rad()
+}
