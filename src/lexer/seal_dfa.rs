@@ -51,10 +51,6 @@ pub fn create_dfa() -> Dfa<TT, char> {
     // Identifiers
     let identifier = dfa.create(TT::Identifier);
     let identifier_emb = dfa.create(TT::Identifier);
-    dfa.transition(root, identifier, '_');
-    dfa.transition_complex(root, identifier, |c| UnicodeXID::is_xid_start(*c));
-    dfa.transition_complex(root, identifier_emb, |c| c.is_emoji_modifier_base());
-    dfa.transition_complex(root, identifier, |c| c.is_emoji());
 
     let ident_edge = |dfa: &mut Dfa<TT, char>, from| {
         dfa.transition(from, identifier, '_');
@@ -63,6 +59,7 @@ pub fn create_dfa() -> Dfa<TT, char> {
         dfa.transition_complex(from, identifier, |c| c.is_emoji());
     };
 
+    ident_edge(&mut dfa, root);
     ident_edge(&mut dfa, identifier);
     ident_edge(&mut dfa, identifier_emb);
     dfa.transition_complex(identifier_emb, identifier, |c| c.is_emoji_modifier());
