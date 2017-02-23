@@ -68,3 +68,40 @@ fn main() {
         print("cool")
     }
 }
+
+type Degrees;
+impl Degrees {
+    @suffix('deg)
+    fn new(value) {
+        new Degrees { value }
+    }
+
+    fn to_rad(self) {
+        new Radians { value: self.value * math.PI / 180.0 }
+    }
+
+    fn to_deg(self) {
+        self
+    }
+}
+
+type Radians;
+impl Radians {
+    @suffix('rad)
+    fn new(value) {
+        new Radians { value }
+    }
+
+    fn to_rad(self) {
+        self
+    }
+
+    fn to_deg(self) {
+        new Degrees { value: self.value * 180.0 / math.PI }
+    }
+}
+
+fn foo() {
+    math.sin(90deg.to_rad()) + math.cos(45deg.to_rad())
+}
+

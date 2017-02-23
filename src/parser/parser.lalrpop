@@ -10,16 +10,40 @@ grammar<'input>;
 pub seal = Module;
 
 Module: () = {
-    Item* => (),
+    LF* (Item LF*)* => (),
 };
 
 Item: () = {
-    LF => (),
+    Attributes InnerItem => (),
+};
+
+Attributes: () = {
+    ("@" Attribute LF+)* => (),
+};
+
+Attribute: () = {
+    Identifier "(" Comma<Attribute> ")" => (),
+    Identifier ("=" Attribute)? => (),
+    Literal => (),
+};
+
+InnerItem: () = {
+    Impl => (),
+    TypeDecl => (),
     Function => (),
 };
 
+Impl: () = {
+    "impl" (TypeName "for")? TypeName "{" Module "}" => (),
+};
+
+TypeDecl: () = {
+    "type" Identifier ";" => (),
+};
+
 Function: () = {
-    "fn" Identifier "(" Comma<Identifier> ")" Scope => ()
+    "fn" Identifier "(" Comma<Identifier> ")" Scope => (),
+    "fn" "new" "(" Comma<Identifier> ")" Scope => (), // ctor
 };
 
 Scope: () = {
@@ -214,6 +238,7 @@ Literal: () = {
     StringLiteral => (),
     SimdLiteral => (),
     ObjectLiteral => (),
+    Label => (),
 };
 
 ObjectLiteral: () = {
