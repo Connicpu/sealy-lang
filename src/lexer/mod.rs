@@ -165,8 +165,11 @@ impl<'input> Iterator for Lexer<'input> {
                         }
                         if let Some(prev) = self.prev {
                             match prev {
-                                TokenType::NewLine => continue,
                                 TokenType::Dot => continue,
+                                TokenType::NewLine => continue,
+                                TokenType::OpenCurly => continue,
+                                TokenType::Semicolon => continue,
+
                                 TokenType::LogicalAnd => continue,
                                 TokenType::LogicalOr => continue,
                                 TokenType::LogicalAndAssign => continue,
@@ -203,6 +206,10 @@ impl<'input> Iterator for Lexer<'input> {
                             if let Ok((_, (tt, _), _)) = *next {
                                 match tt {
                                     TokenType::Dot => continue,
+                                    TokenType::CloseBracket => continue,
+                                    TokenType::Else => continue,
+                                    TokenType::Semicolon => continue,
+
                                     TokenType::LogicalAnd => continue,
                                     TokenType::LogicalOr => continue,
                                     TokenType::LogicalAndAssign => continue,
@@ -220,7 +227,6 @@ impl<'input> Iterator for Lexer<'input> {
                                     TokenType::ShlAssign => continue,
                                     TokenType::ShrAssign => continue,
                                     TokenType::LShrAssign => continue,
-                                    TokenType::CloseBracket => continue,
                                     _ => (),
                                 }
                             }

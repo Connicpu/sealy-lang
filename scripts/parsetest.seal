@@ -28,4 +28,43 @@ fn main() {
     1_000
 
     90deg.to_rad()
+
+    baz("asdf")
+    bar("\u{1F98A}")
+
+    let z = if foo() {
+        bar()
+    } else {
+        1_000_000.dollars
+    }
+
+    while let x = baz() {
+        print(x)
+    } else {
+        print("baz gives nothing")
+    }
+
+    if if a { b } else { c } {
+        "lol"
+    }
+
+    if b {
+        wow()
+    } else {
+        k()
+    }
+
+    if a
+    {
+        wow()
+    }
+    else
+    {
+        k()
+    }
+
+    loop
+    {
+        print("cool")
+    }
 }
