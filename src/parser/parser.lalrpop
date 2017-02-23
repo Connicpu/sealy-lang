@@ -180,7 +180,7 @@ DereferenceImp<N>: () = {
 };
 
 TypeName: () = {
-    Identifier ("." Identifier)* => (),
+    (Identifier ".")* Identifier => (),
 };
 
 Term: () = {
