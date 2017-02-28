@@ -1,6 +1,7 @@
 use lexer;
 use lexer::TokenType as TT;
 use parser::ast;
+use parser::ast::Node;
 use parser::string_literal::parse_literal;
 use std::borrow::Cow;
 use std::str::FromStr;
@@ -10,50 +11,80 @@ grammar<'input>;
 
 pub seal = Module;
 
-Module: () = {
-    MOD_DOC_COMMENT* LF* (Item End*)* => (),
+Module: ast::Module<'input> = {
+    <MOD_DOC_COMMENT*> LF* <(<Node<Item>> End*)*> => {
+        let (docs, items) = (<>);
+        ast::Module {
+            docs: docs,
+            items: items,
+        }
+    },
 };
 
-Item: () = {
-    Attributes InnerItem => (),
+Item: ast::Item<'input> = {
+    Attributes Node<InnerItem> => {
+        let (a, i) = (<>);
+        ast::Item {
+            attributes: a,
+            item: i,
+        }
+    },
 };
 
-Attributes: () = {
-    (RootAttribute LF+)* => (),
+Attributes: Vec<ast::Node<ast::Attribute<'input>>> = {
+    (<Node<RootAttribute>> LF+)*,
 };
 
-RootAttribute: () = {
-    "@" <Attribute>,
-    DOC_COMMENT => (),
+RootAttribute: ast::Attribute<'input> = {
+    "@" <Attribute> => ast::Attribute::Attribute(<>),
+    DOC_COMMENT => ast::Attribute::Doc(<>),
 };
 
-Attribute: () = {
-    Identifier "(" Comma<Attribute> ")" => (),
-    Identifier ("=" Attribute)? => (),
-    Literal => (),
+Attribute: ast::AttributeValue<'input> = {
+    Identifier ("=" <Box<Node<Attribute>>>)? => match (<>) {
+        (i, None) => ast::AttributeValue::Id(i),
+        (i, Some(v)) => ast::AttributeValue::IdValue(i, v),
+    },
+    Identifier ("(" <Comma<Node<Attribute>>> ")") => ast::AttributeValue::IdList(<>),
+    Node<Literal> => ast::AttributeValue::Literal(<>),
 };
 
-InnerItem: () = {
-    UseImport => (),
-    Impl => (),
-    TypeDecl => (),
-    StructDecl => (),
-    TraitDecl => (),
-    EnumDecl => (),
-    Constant => (),
-    Function => (),
-    ModDecl => (),
+InnerItem: ast::ItemKind<'input> = {
+    UseImport => ast::ItemKind::UseImport(<>),
+    Impl => unimplemented!(),
+    TypeDecl => unimplemented!(),
+    StructDecl => unimplemented!(),
+    TraitDecl => unimplemented!(),
+    EnumDecl => unimplemented!(),
+    Constant => unimplemented!(),
+    Function => ast::ItemKind::Function(<>),
+    ModDecl => ast::ItemKind::ModDecl(<>),
 };
 
-UseImport: () = {
-    "use" Identifier ("." Identifier)* => (),
-    "use" Identifier ("." Identifier)* "." "*" => (),
-    "use" Identifier ("." Identifier)* "." "(" Comma<Identifier> ")" => (),
+UseImport: ast::UseImport<'input> = {
+    "use" <TypeName> => ast::UseImport {
+        base: <>,
+        glob: false,
+        multi: vec![],
+    },
+    "use" <TypeName> "." "*" => ast::UseImport {
+        base: <>,
+        glob: true,
+        multi: vec![],
+    },
+    "use" <TypeName> "." "(" <Comma<Identifier>> ")" => {
+        let (b, m) = (<>);
+        ast::UseImport {
+            base: b,
+            glob: false,
+            multi: m,
+        }
+    },
 };
 
-ModDecl: () = {
-    "mod" Identifier => (),
-    "mod" Identifier "{" Module "}" => (),
+ModDecl: ast::ModDecl<'input> = {
+    "mod" <Identifier> => ast::ModDecl::Import(<>),
+    "mod" <Identifier> "{" <Box<Module>> "}" => ast::ModDecl::Inline(<>),
 };
 
 ExternImport: () = {
@@ -108,12 +139,32 @@ Constant: () = {
     "const" Identifier "=" Expression End => (),
 };
 
-Function: () = {
-    "fn" Identifier "(" Comma<Identifier> ")" Scope => (),
-    "fn" "new" "(" Comma<Identifier> ")" Scope => (), // ctor
+Function: ast::Function<'input> = {
+    "fn" <Identifier> "(" <Comma<Identifier>> ")" <"?"?> <@R> <Scope> => {
+        let (n, p, t, e, s) = (<>);
+        ast::Function {
+            name: n,
+            parameters: p,
+            throws: t.is_some(),
+            body: s,
+            decl_end: e,
+        }
+    },
+    "fn" <"new"> "(" <Comma<Identifier>> ")" <"?"?> <@R> <Scope> => {
+        let (n, p, t, e, s) = (<>);
+        ast::Function {
+            name: n,
+            parameters: p,
+            throws: t.is_some(),
+            body: s,
+            decl_end: e,
+        }
+    },
 };
 
-Scope: ast::Scope<'input> = {
+Scope = Node<ScopeInner>;
+
+ScopeInner: ast::Scope<'input> = {
     "{" <(<Statement> End)*> <Statement?> "}" => {
         let (mut v, e) = (<>);
         match e {
@@ -127,7 +178,7 @@ Scope: ast::Scope<'input> = {
 };
 
 Statement: ast::Statement<'input> = {
-    VariableDecl => ast::Statement::VariableDecl(Box::new(<>)),
+    Box<Node<VariableDecl>> => ast::Statement::VariableDecl(<>),
     Expression => ast::Statement::Expression(<>),
 };
 
@@ -160,9 +211,11 @@ DeclPattern: ast::DeclPattern<'input> = {
     },
 };
 
-Expression: ast::Expression<'input> = {
-    Scope => ast::Expression::Scope(Box::new(<>)),
-    Lambda => ast::Expression::Lambda(Box::new(<>)),
+Expression = Node<InnerExpression>;
+
+InnerExpression: ast::Expression<'input> = {
+    Box<Scope> => ast::Expression::Scope(<>),
+    Box<Lambda> => ast::Expression::Lambda(<>),
     BinaryOperators,
     
     AssignmentOp,
@@ -178,7 +231,7 @@ Expression: ast::Expression<'input> = {
 };
 
 AssignmentOp: ast::Expression<'input> = {
-    AssignPattern AssignOps Expression => {
+    Node<AssignPattern> AssignOps Expression => {
         let (lhs, op, rhs) = (<>);
         ast::Expression::AssignmentOp(Box::new(ast::AssignmentOp {
             lhs: lhs,
@@ -193,7 +246,7 @@ AssignPattern: ast::Expression<'input> = {
 };
 
 Throw: ast::Expression<'input> = {
-    "throw" <Expression> => ast::Expression::Throw(Box::new(<>)),
+    "throw" <Box<Expression>> => ast::Expression::Throw(<>),
 };
 
 Break: ast::Expression<'input> = {
@@ -217,7 +270,7 @@ Continue: ast::Expression<'input> = {
 };
 
 Return: ast::Expression<'input> = {
-    "return" <Expression> => ast::Expression::Return(Box::new(<>)),
+    "return" <Box<Expression>> => ast::Expression::Return(<>),
 };
 
 IfExpression: () = {
@@ -272,11 +325,12 @@ ForExpression: ast::ForLoop<'input> = {
 LoopElse = "else" <Scope>;
 
 Lambda: ast::Lambda<'input> = {
-    LambdaHeader Expression => {
-        let (p, b) = (<>);
+    LambdaHeader "?"? Expression => {
+        let (p, t, b) = (<>);
         ast::Lambda {
             parameters: p,
             body: b,
+            throws: t.is_some(),
         }
     },
 };
@@ -367,37 +421,37 @@ AddSubOperators = Tier<AddSubOps, MulDivOperators>;
 MulDivOperators = Tier<MulDivOps, UnaryOperators>;
 
 UnaryOperators: ast::Expression<'input> = {
-    "-" <UnaryOperators> => ast::Expression::Negate(Box::new(<>)),
-    "!" <UnaryOperators> => ast::Expression::Not(Box::new(<>)),
-    <Dereference> "?" => ast::Expression::Try(Box::new(<>)),
+    "-" <Box<Node<UnaryOperators>>> => ast::Expression::Negate(<>),
+    "!" <Box<Node<UnaryOperators>>> => ast::Expression::Not(<>),
+    <Box<Node<Dereference>>> "?" => ast::Expression::Try(<>),
 
     Dereference,
 };
 
 Dereference = DereferenceImp<Term>;
 DereferenceImp<N>: ast::Expression<'input> = {
-    <Dereference> "." <Identifier> => {
+    <Node<Dereference>> "." <Identifier> => {
         let (lhs, rhs) = (<>);
         ast::Expression::MemberAccess(Box::new(ast::MemberAccess {
             lhs: lhs,
             rhs: rhs,
         }))
     },
-    <Dereference> "." <DecIntegerLiteral> => {
+    <Node<Dereference>> "." <DecIntegerLiteral> => {
         let (lhs, rhs) = (<>);
         ast::Expression::TupleAccess(Box::new(ast::TupleAccess {
             lhs: lhs,
             rhs: rhs,
         }))
     },
-    <Dereference> "(" <Comma<Expression>> ")" => {
+    <Node<Dereference>> "(" <Comma<Expression>> ")" => {
         let (lhs, rhs) = (<>);
         ast::Expression::FunctionCall(Box::new(ast::FunctionCall {
             lhs: lhs,
             parameters: rhs,
         }))
     },
-    <Dereference> "[" <Comma<Expression>> "]" => {
+    <Node<Dereference>> "[" <Comma<Expression>> "]" => {
         let (lhs, rhs) = (<>);
         ast::Expression::ArrayIndex(Box::new(ast::ArrayIndex {
             lhs: lhs,
@@ -407,6 +461,7 @@ DereferenceImp<N>: ast::Expression<'input> = {
     N,
 };
 
+#[inline]
 TypeName: ast::TypeName<'input> = {
     (<Identifier> ".")* Identifier => {
         let (mut v, i) = (<>);
@@ -418,7 +473,7 @@ TypeName: ast::TypeName<'input> = {
 };
 
 Term: ast::Expression<'input> = {
-    "(" <Expression> ")",
+    "(" <InnerExpression> ")",
     IdentifierExpr,
     Literal Identifier? => {
         let (e, i) = (<>);
@@ -468,7 +523,7 @@ ObjectLiteral: ast::Literal<'input> = {
     },
 };
 
-ObjectLiteralItem: (&'input str, Option<ast::Expression<'input>>) = {
+ObjectLiteralItem: (&'input str, Option<ast::ExprNode<'input>>) = {
      LF* <Identifier> <(":" <Expression>)?> LF* => (<>),
 };
 
@@ -478,7 +533,7 @@ ArrayLiteral: ast::Literal<'input> = {
 };
 
 SimdLiteral: ast::Literal<'input> = {
-    "<" <Comma<BitwiseOperators>> ">" => ast::Literal::SimdLiteral(<>),
+    "<" <Comma<Node<BitwiseOperators>>> ">" => ast::Literal::SimdLiteral(<>),
 };
 
 IntegerLiteral: i64 = {
@@ -529,7 +584,7 @@ Comma<T>: Vec<T> = {
 };
 
 Tier<Op, NextTier>: ast::Expression<'input> = {
-    Tier<Op, NextTier> Op NextTier => {
+    Node<Tier<Op, NextTier>> Op Node<NextTier> => {
         let (lhs, op, rhs) = (<>);
         let op = ast::BinaryOp {
             lhs: lhs,
@@ -539,6 +594,14 @@ Tier<Op, NextTier>: ast::Expression<'input> = {
         ast::Expression::BinaryOp(Box::new(op))
     },
     NextTier
+};
+
+Node<T>: ast::Node<T> = {
+    @L T @R => (<>).into()
+};
+
+Box<T>: Box<T> = {
+    T => Box::new(<>)
 };
 
 extern {

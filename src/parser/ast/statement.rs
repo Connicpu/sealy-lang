@@ -1,16 +1,17 @@
-use super::Expression;
+use super::ExprNode;
+use super::Node;
 use std::collections::BTreeMap;
 
 #[derive(Debug)]
 pub enum Statement<'input> {
-    Expression(Expression<'input>),
-    VariableDecl(Box<VariableDecl<'input>>),
+    Expression(ExprNode<'input>),
+    VariableDecl(Box<Node<VariableDecl<'input>>>),
 }
 
 #[derive(Debug)]
 pub struct VariableDecl<'input> {
     pub pattern: DeclPattern<'input>,
-    pub expression: Option<Expression<'input>>,
+    pub expression: Option<ExprNode<'input>>,
 }
 
 #[derive(Debug)]

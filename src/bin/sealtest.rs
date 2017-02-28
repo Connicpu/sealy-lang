@@ -17,5 +17,24 @@ fn main() {
     let input = &buf[..];
     let lexer = sealy_lang::lexer::Lexer::new(input);
     let result = sealy_lang::parser::parse(lexer);
-    println!("{:?}", result);
+    println!("{:#?}", result);
+
+    if let Ok(ref m) = result {
+        print_functions(input, m);
+    }
+}
+
+fn print_functions(src: &str, module: &sealy_lang::parser::ast::Module) {
+    use sealy_lang::parser::ast;
+    for item in module.items.iter() {
+        let ref item = item.node.item;
+        match item.node {
+            ast::ItemKind::Function(ref func) => {
+                let lhs = item.start.index;
+                let rhs = func.decl_end.index;
+                println!("{}", &src[lhs..rhs]);
+            }
+            _ => (),
+        }
+    }
 }

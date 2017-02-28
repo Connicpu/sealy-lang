@@ -13,6 +13,6 @@ pub type Error<'i> = ::lalrpop_util::ParseError<lexer::Location,
 
 // force monomorphization here
 #[inline(never)]
-pub fn parse(lexer: Lexer) -> Result<(), Error> {
+pub fn parse(lexer: Lexer) -> Result<ast::Module, Error> {
     parser::parse_seal(lexer)
 }

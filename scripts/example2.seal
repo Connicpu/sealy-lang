@@ -1,16 +1,20 @@
 //! FizzBuzz example :p
 
-extern mod std
+//extern mod std
 
 /// Main method
 @start()
 fn main() {
     for i in 1...100 {
-        match (i % 3, i % 5) {
+        match check_fizzy(i) {
             (0, 0) => println("FizzBuzz"),
             (0, _) => println("Fizz"),
             (_, 0) => println("Buzz"),
             (..) => println("{}", i),
         }
     }
+}
+
+fn check_fizzy(i) {
+    (i % 3, i % 5)
 }

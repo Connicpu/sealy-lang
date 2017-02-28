@@ -1,7 +1,8 @@
-use super::Expression;
+use super::ExprNode;
 
 #[derive(Debug)]
 pub struct Lambda<'input> {
     pub parameters: Vec<&'input str>,
-    pub body: Expression<'input>,
+    pub body: ExprNode<'input>,
+    pub throws: bool,
 }

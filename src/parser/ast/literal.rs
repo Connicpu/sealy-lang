@@ -1,4 +1,4 @@
-use super::Expression;
+use super::ExprNode;
 use super::TypeName;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
@@ -10,8 +10,8 @@ pub enum Literal<'input> {
     Float(f64),
     String(Cow<'input, str>),
     Label(&'input str),
-    SimdLiteral(Vec<Expression<'input>>),
-    ArrayLiteral(Vec<Expression<'input>>),
-    ArraySplat(Expression<'input>, Expression<'input>),
-    ObjectLiteral(Option<TypeName<'input>>, BTreeMap<&'input str, Option<Expression<'input>>>),
+    SimdLiteral(Vec<ExprNode<'input>>),
+    ArrayLiteral(Vec<ExprNode<'input>>),
+    ArraySplat(ExprNode<'input>, ExprNode<'input>),
+    ObjectLiteral(Option<TypeName<'input>>, BTreeMap<&'input str, Option<ExprNode<'input>>>),
 }
