@@ -65,8 +65,8 @@ pub fn create_dfa() -> Dfa<TT, char> {
     dfa.transition_complex(identifier_emb, identifier, |c| c.is_emoji_modifier());
 
     // mod= special case
-    let modeq_m = dfa.create(None);
-    let modeq_mo = dfa.create(None);
+    let modeq_m = dfa.create(TT::Identifier);
+    let modeq_mo = dfa.create(TT::Identifier);
     let modeq_mod = dfa.create(TT::Mod);
     let modeq = dfa.create(TT::ModAssign);
     dfa.transition(root, modeq_m, 'm');
@@ -195,6 +195,7 @@ pub fn create_dfa() -> Dfa<TT, char> {
     dfa.insert_string(root, ",".chars(), TT::Comma);
     dfa.insert_string(root, "?".chars(), TT::Question);
     dfa.insert_string(root, ".".chars(), TT::Dot);
+    dfa.insert_string(root, "=>".chars(), TT::FatArrow);
 
     dfa.insert_string(root, "..".chars(), TT::RangeExclusive);
     dfa.insert_string(root, "...".chars(), TT::RangeInclusive);

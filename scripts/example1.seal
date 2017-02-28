@@ -1,0 +1,31 @@
+use engine.components.(Component, Update)
+
+struct CameraFollow {
+    @dependency()
+    transform,
+
+    @property('GameObject, 'transform)
+    target,
+
+    @property('vector)
+    offset,
+
+    @property('quat)
+    angle,
+}
+
+impl Component for CameraFollow {
+    const NAME = 'camera_follow
+}
+
+impl Update for CameraFollow {
+    fn update(self) {
+        // Rotate our offset into position
+        let offset = self.offset.rotate(self.target.world_rotation() * self.angle)
+        // Add the offset to the object position
+        let pos = self.target.position + offset
+
+        self.transform.position = pos
+    }
+}
+

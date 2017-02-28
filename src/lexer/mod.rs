@@ -9,11 +9,12 @@ pub mod seal_dfa;
 pub type Spanned<Tok, Loc, Error> = Result<(Loc, Tok, Loc), Error>;
 pub type Tok<'input> = (TokenType, &'input str);
 
+/// The lexer
 #[derive(Clone)]
 pub struct Lexer<'input> {
     inner: Peekable<WhitespaceStripper<'input>>,
     prev: Option<TokenType>,
-    paren_lvl: i32,
+    paren_lvl: Vec<i32>,
 }
 
 #[derive(Clone)]
@@ -45,7 +46,7 @@ impl<'input> Lexer<'input> {
         Lexer {
             inner: inner.peekable(),
             prev: None,
-            paren_lvl: 0,
+            paren_lvl: vec![0],
         }
     }
 }
@@ -157,10 +158,10 @@ impl<'input> Iterator for Lexer<'input> {
 
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(t) = self.inner.next() {
-            if let Ok((_, (tt, _), _)) = t {
+            if let Ok((left, (tt, _), _)) = t {
                 match tt {
                     TokenType::NewLine => {
-                        if self.paren_lvl > 0 {
+                        if *self.paren_lvl.last().unwrap() > 0 {
                             continue;
                         }
                         if let Some(prev) = self.prev {
@@ -169,6 +170,7 @@ impl<'input> Iterator for Lexer<'input> {
                                 TokenType::NewLine => continue,
                                 TokenType::OpenCurly => continue,
                                 TokenType::Semicolon => continue,
+                                TokenType::Comma => continue,
 
                                 TokenType::LogicalAnd => continue,
                                 TokenType::LogicalOr => continue,
@@ -180,6 +182,7 @@ impl<'input> Iterator for Lexer<'input> {
                                 TokenType::Div => continue,
                                 TokenType::Rem => continue,
                                 TokenType::DivRem => continue,
+                                TokenType::Mod => continue,
                                 TokenType::BitAnd => continue,
                                 TokenType::BitOr => continue,
                                 TokenType::BitXor => continue,
@@ -206,7 +209,7 @@ impl<'input> Iterator for Lexer<'input> {
                             if let Ok((_, (tt, _), _)) = *next {
                                 match tt {
                                     TokenType::Dot => continue,
-                                    TokenType::CloseBracket => continue,
+                                    TokenType::CloseCurly => continue,
                                     TokenType::Else => continue,
                                     TokenType::Semicolon => continue,
 
@@ -233,10 +236,19 @@ impl<'input> Iterator for Lexer<'input> {
                         }
                     }
                     TokenType::OpenParen | TokenType::OpenBracket => {
-                        self.paren_lvl += 1;
+                        *self.paren_lvl.last_mut().unwrap() += 1;
                     }
                     TokenType::CloseParen | TokenType::CloseBracket => {
-                        self.paren_lvl -= 1;
+                        *self.paren_lvl.last_mut().unwrap() -= 1;
+                    }
+                    TokenType::OpenCurly => {
+                        self.paren_lvl.push(0);
+                    }
+                    TokenType::CloseCurly => {
+                        if self.paren_lvl.len() == 1 {
+                            return Some(Err(LexicalError::TooManyCloseCurlies(left)));
+                        }
+                        self.paren_lvl.pop();
                     }
                     _ => (),
                 }
@@ -261,6 +273,7 @@ pub struct Location {
 #[derive(Debug, Clone)]
 pub enum LexicalError {
     Unexpected(char, Location),
+    TooManyCloseCurlies(Location),
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -294,7 +307,7 @@ pub enum TokenType {
     Else,
     Enum,
     Extern,
-    Function, // `fn`
+    Function,
     For,
     If,
     Impl,
@@ -302,10 +315,12 @@ pub enum TokenType {
     In,
     Let,
     Loop,
-    Mod, // `mod`
+    Match,
+    Mod,
     New,
     Nil,
     Return,
+    Struct,
     Throw,
     Trait,
     Type,
@@ -323,6 +338,7 @@ pub enum TokenType {
     Comma,
     Question,
     Dot,
+    FatArrow,
 
     RangeExclusive,
     RangeInclusive,

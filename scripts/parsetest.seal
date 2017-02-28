@@ -1,3 +1,44 @@
+@foo("foo")
+type Foo;
+
+@bar('bar)
+struct Bar {
+    @baz(5)
+    baz,
+}
+
+enum Baz {
+    @asdf
+    Baz(a),
+
+    @ghjk(6)
+    Qux(b),
+}
+
+const X = 5
+
+mod foo {
+    fn bar() {
+        nil
+    }
+}
+
+@lang('option)
+enum Option {
+    None,
+    Some(value),
+}
+
+@lang('iterator)
+trait Iterator {
+    fn next(self);
+}
+
+@lang('into_iterator)
+trait IntoIterator {
+    fn into_iter(self);
+}
+
 fn main() {
     let x = foo()
         .goo()
@@ -20,7 +61,7 @@ fn main() {
     foo()
     -x
 
-    big.ass.expression.to.get.to.an.array[at, an, index]
+    big.ass.expression().to.get.to.an.array[at, an, index]
         += my.awesome().value
 
     let w = <1, 2, 3>
@@ -35,6 +76,7 @@ fn main() {
     let z = if foo() {
         bar()
     } else {
+        foo(0b_1001_1001)
         1_000_000.dollars
     }
 
@@ -54,18 +96,28 @@ fn main() {
         k()
     }
 
-    if a
-    {
-        wow()
-    }
-    else
-    {
-        k()
+    let z = loop {
+        if foo() {
+            break: bar()
+        }
     }
 
-    loop
-    {
-        print("cool")
+    let z = 'foo: loop {
+        'bar: for x in foo() {
+            if x.is_special() {
+                break 'foo: x
+            } else if x.is_silly() {
+                loop {
+                    match x.try_unsilly() {
+                        'failure => break 'bar,
+                        'success => break,
+                        'progress => (),
+                    }
+                }
+            }
+        } else {
+            break: nil
+        }
     }
 }
 

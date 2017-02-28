@@ -1,0 +1,14 @@
+@lang('result)
+enum Result {
+    Ok(ok),
+    Err(err),
+}
+
+impl Result {
+    fn unwrap(self) {
+        match self {
+            Ok(ok) => ok,
+            Err(e) => panic("Tried to unwrap Err({})", e),
+        }
+    }
+}

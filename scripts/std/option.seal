@@ -1,0 +1,14 @@
+@lang('option)
+enum Option {
+    Some(value),
+    None,
+}
+
+impl Option {
+    fn unwrap(self) {
+        match self {
+            Some(value) => value,
+            None => panic("Tried to unwrap None"),
+        }
+    }
+}

@@ -1,16 +1,17 @@
 use lexer;
 use lexer::TokenType as TT;
 use parser::ast;
+use parser::string_literal::parse_literal;
 use std::borrow::Cow;
 use std::str::FromStr;
-use parser::string_literal::parse_literal;
+use std::collections::BTreeMap;
 
 grammar<'input>;
 
 pub seal = Module;
 
 Module: () = {
-    LF* (Item LF*)* => (),
+    MOD_DOC_COMMENT* LF* (Item End*)* => (),
 };
 
 Item: () = {
@@ -18,7 +19,12 @@ Item: () = {
 };
 
 Attributes: () = {
-    ("@" Attribute LF+)* => (),
+    (RootAttribute LF+)* => (),
+};
+
+RootAttribute: () = {
+    "@" <Attribute>,
+    DOC_COMMENT => (),
 };
 
 Attribute: () = {
@@ -28,9 +34,30 @@ Attribute: () = {
 };
 
 InnerItem: () = {
+    UseImport => (),
     Impl => (),
     TypeDecl => (),
+    StructDecl => (),
+    TraitDecl => (),
+    EnumDecl => (),
+    Constant => (),
     Function => (),
+    ModDecl => (),
+};
+
+UseImport: () = {
+    "use" Identifier ("." Identifier)* => (),
+    "use" Identifier ("." Identifier)* "." "*" => (),
+    "use" Identifier ("." Identifier)* "." "(" Comma<Identifier> ")" => (),
+};
+
+ModDecl: () = {
+    "mod" Identifier => (),
+    "mod" Identifier "{" Module "}" => (),
+};
+
+ExternImport: () = {
+    "extern" "mod" Identifier => (),
 };
 
 Impl: () = {
@@ -38,7 +65,47 @@ Impl: () = {
 };
 
 TypeDecl: () = {
-    "type" Identifier ";" => (),
+    "type" Identifier => (),
+};
+
+StructDecl: () = {
+    "struct" Identifier "{" StructMembers "}" => (),
+};
+
+StructMembers: () = {
+    LF* (StructMember "," LF*)* => (),
+};
+
+StructMember: () = {
+    Attributes Identifier => (),
+};
+
+EnumDecl: () = {
+    "enum" Identifier "{" EnumItems "}" => (),
+};
+
+EnumItems: () = {
+    LF* (EnumItem "," LF*)* => (),
+};
+
+EnumItem: () = {
+    Attributes Identifier ("(" Comma<Identifier> ")")? => (),
+};
+
+TraitDecl: () = {
+    "trait" Identifier "{" TraitItems "}" => (),
+};
+
+TraitItems: () = {
+    LF* (TraitItem End*)* => (),
+};
+
+TraitItem: () = {
+    Attributes "fn" Identifier "(" Comma<Identifier> ")" => (),
+};
+
+Constant: () = {
+    "const" Identifier "=" Expression End => (),
 };
 
 Function: () = {
@@ -46,37 +113,116 @@ Function: () = {
     "fn" "new" "(" Comma<Identifier> ")" Scope => (), // ctor
 };
 
-Scope: () = {
-    LF? "{" (Statement End)* Statement? "}" => ()
+Scope: ast::Scope<'input> = {
+    "{" <(<Statement> End)*> <Statement?> "}" => {
+        let (mut v, e) = (<>);
+        match e {
+            Some(e) => v.push(e),
+            None => (),
+        }
+        ast::Scope {
+            statements: v,
+        }
+    }
 };
 
-Statement: () = {
-    VariableDecl => (),
-    AssignmentOp => (),
-    Expression => (),
+Statement: ast::Statement<'input> = {
+    VariableDecl => ast::Statement::VariableDecl(Box::new(<>)),
+    Expression => ast::Statement::Expression(<>),
 };
 
-VariableDecl: () = {
-    "let" DeclPattern ("=" Expression)? => (),
+VariableDecl: ast::VariableDecl<'input> = {
+    "let" <DeclPattern> <("=" <Expression>)?> => {
+        let (p, e) = (<>);
+        ast::VariableDecl {
+            pattern: p,
+            expression: e,
+        }
+    },
 };
 
-AssignmentOp: () = {
-    AssignPattern AssignOps Expression => (),
+DeclPattern: ast::DeclPattern<'input> = {
+    Identifier => ast::DeclPattern::Identifier(<>),
+    "(" <Comma<DeclPattern>> <".."?> ")" => {
+        let (v, b) = (<>);
+        ast::DeclPattern::Tuple(v, b.is_some())
+    },
+    "[" <Comma<DeclPattern>> <".."?> "]" => {
+        let (v, b) = (<>);
+        ast::DeclPattern::Array(v, b.is_some())
+    },
+    "<" <Comma<Identifier>> <".."?> ">" => {
+        let (v, b) = (<>);
+        ast::DeclPattern::Simd(v, b.is_some())
+    },
+    "{" <Comma<(Identifier (":" <DeclPattern>)?)>> "}" => {
+        ast::DeclPattern::Object(<>.into_iter().collect())
+    },
 };
 
-Expression: () = {
-    Scope => (),
-    Lambda,
+Expression: ast::Expression<'input> = {
+    Scope => ast::Expression::Scope(Box::new(<>)),
+    Lambda => ast::Expression::Lambda(Box::new(<>)),
     BinaryOperators,
     
-    IfExpression,
-    LoopExpression,
-    WhileExpression,
+    AssignmentOp,
+    Throw,
+    Break,
+    Continue,
+    Return,
+    IfExpression => ast::Expression::Literal(Box::new(ast::Literal::Nil)),
+    MatchExpression => ast::Expression::Literal(Box::new(ast::Literal::Nil)),
+    LoopExpression => ast::Expression::Literal(Box::new(ast::Literal::Nil)),
+    WhileExpression => ast::Expression::Literal(Box::new(ast::Literal::Nil)),
+    ForExpression => ast::Expression::Literal(Box::new(ast::Literal::Nil)),
+};
+
+AssignmentOp: ast::Expression<'input> = {
+    AssignPattern AssignOps Expression => {
+        let (lhs, op, rhs) = (<>);
+        ast::Expression::AssignmentOp(Box::new(ast::AssignmentOp {
+            lhs: lhs,
+            rhs: rhs,
+            operator: op,
+        }))
+    },
+};
+
+AssignPattern: ast::Expression<'input> = {
+    DereferenceImp<IdentifierExpr>,
+};
+
+Throw: ast::Expression<'input> = {
+    "throw" <Expression> => ast::Expression::Throw(Box::new(<>)),
+};
+
+Break: ast::Expression<'input> = {
+    "break" <Label?> <(":" <Expression>)?> => {
+        let (l, v) = (<>);
+        ast::Expression::Break(Box::new(ast::Break {
+            label: l,
+            value: v,
+        }))
+    },
+};
+
+Continue: ast::Expression<'input> = {
+    "continue" <Label?> <(":" <Expression>)?> => {
+        let (l, v) = (<>);
+        ast::Expression::Continue(Box::new(ast::Continue {
+            label: l,
+            value: v,
+        }))
+    },
+};
+
+Return: ast::Expression<'input> = {
+    "return" <Expression> => ast::Expression::Return(Box::new(<>)),
 };
 
 IfExpression: () = {
     "if" Expression Scope ElseTail? => (),
-    "if" VariableDecl Scope ElseTail? => (),
+    "if" "let" MatchPattern "=" Expression Scope ElseTail? => (),
 };
 
 ElseTail: () = {
@@ -84,21 +230,55 @@ ElseTail: () = {
     "else" Scope => (),
 };
 
+MatchExpression: () = {
+    "match" Expression "{" Comma<MatchItem> "}" => (),
+};
+
+MatchItem: () = {
+    MatchPattern "=>" Expression => (),
+};
+
+MatchPattern: () = {
+    Identifier,
+    SimpleLiteral,
+    (Identifier ("." Identifier)*)? "(" Comma<MatchPattern> ".."? ")" => (),
+    (Identifier ("." Identifier)*)? "{" Comma<(Identifier (":" DeclPattern)?)> "}" => (),
+    "[" Comma<MatchPattern> ".."? "]" => (),
+    "<" Comma<Identifier> ".."? ">" => (),
+};
+
 LoopExpression: () = {
     (Label ":")? "loop" Scope => (),
 };
 
 WhileExpression: () = {
-    (Label ":")? "while" Expression Scope WhileElse? => (),
-    (Label ":")? "while" VariableDecl Scope WhileElse? => (),
+    (Label ":")? "while" Expression Scope LoopElse? => (),
+    (Label ":")? "while" "let" MatchPattern "=" Expression Scope LoopElse? => (),
 };
 
-WhileElse: () = {
-    "else" Scope => (),
+ForExpression: ast::ForLoop<'input> = {
+    (<Label> ":")? "for" DeclPattern "in" Expression Scope LoopElse? => {
+        let (label, _, binding, _, expr, body, elseb) = (<>);
+        ast::ForLoop {
+            label: label,
+            binding: binding,
+            expression: expr,
+            body: body,
+            else_body: elseb,
+        }
+    },
 };
 
-Lambda: () = {
-    LambdaHeader Expression => (),
+LoopElse = "else" <Scope>;
+
+Lambda: ast::Lambda<'input> = {
+    LambdaHeader Expression => {
+        let (p, b) = (<>);
+        ast::Lambda {
+            parameters: p,
+            body: b,
+        }
+    },
 };
 
 // Returns the list of parameter names
@@ -186,76 +366,119 @@ ShiftOperators = Tier<ShiftOps, AddSubOperators>;
 AddSubOperators = Tier<AddSubOps, MulDivOperators>;
 MulDivOperators = Tier<MulDivOps, UnaryOperators>;
 
-UnaryOperators: () = {
-    "-" UnaryOperators => (),
-    "!" UnaryOperators => (),
-    Dereference "?" => (),
+UnaryOperators: ast::Expression<'input> = {
+    "-" <UnaryOperators> => ast::Expression::Negate(Box::new(<>)),
+    "!" <UnaryOperators> => ast::Expression::Not(Box::new(<>)),
+    <Dereference> "?" => ast::Expression::Try(Box::new(<>)),
 
     Dereference,
 };
 
 Dereference = DereferenceImp<Term>;
-DereferenceImp<N>: () = {
-    Dereference "." Identifier => (),
-    Dereference "." DecIntegerLiteral => (), // tuple access
-    Dereference "(" Comma<Expression> ")" => (),
-    Dereference "[" Comma<Expression> "]" => (),
+DereferenceImp<N>: ast::Expression<'input> = {
+    <Dereference> "." <Identifier> => {
+        let (lhs, rhs) = (<>);
+        ast::Expression::MemberAccess(Box::new(ast::MemberAccess {
+            lhs: lhs,
+            rhs: rhs,
+        }))
+    },
+    <Dereference> "." <DecIntegerLiteral> => {
+        let (lhs, rhs) = (<>);
+        ast::Expression::TupleAccess(Box::new(ast::TupleAccess {
+            lhs: lhs,
+            rhs: rhs,
+        }))
+    },
+    <Dereference> "(" <Comma<Expression>> ")" => {
+        let (lhs, rhs) = (<>);
+        ast::Expression::FunctionCall(Box::new(ast::FunctionCall {
+            lhs: lhs,
+            parameters: rhs,
+        }))
+    },
+    <Dereference> "[" <Comma<Expression>> "]" => {
+        let (lhs, rhs) = (<>);
+        ast::Expression::ArrayIndex(Box::new(ast::ArrayIndex {
+            lhs: lhs,
+            indices: rhs,
+        }))
+    },
     N,
 };
 
-TypeName: () = {
-    (Identifier ".")* Identifier => (),
+TypeName: ast::TypeName<'input> = {
+    (<Identifier> ".")* Identifier => {
+        let (mut v, i) = (<>);
+        v.push(i);
+        ast::TypeName {
+            parts: v,
+        }
+    },
 };
 
-Term: () = {
-    "(" Expression ")" => (),
-    Identifier => (),
-    Literal Identifier? => (),
-    Tuple => (),
-    "nil" => (),
+Term: ast::Expression<'input> = {
+    "(" <Expression> ")",
+    IdentifierExpr,
+    Literal Identifier? => {
+        let (e, i) = (<>);
+        match i {
+            None => ast::Expression::Literal(Box::new(e)),
+            Some(i) => ast::Expression::UserSuffix(Box::new(ast::UserSuffix {
+                value: e,
+                suffix: i,
+            })),
+        }
+    },
+    Tuple,
 };
 
-DeclPattern: () = {
-    Identifier,
-    "(" Comma<DeclPattern> ".."? ")" => (),
-    "[" Comma<DeclPattern> ".."? "]" => (),
-    "<" Comma<Identifier> ".."? ">" => (),
-    "{" Comma<(Identifier (":" DeclPattern)?)> "}" => (),
+Tuple: ast::Expression<'input> = {
+    "(" ")" => ast::Expression::EmptyTuple, // empty tuple
+    "(" <Expression> "," <Comma<Expression>> ")" => {
+        let (e, mut v) = (<>);
+        v.insert(0, e);
+        ast::Expression::Tuple(Box::new(v))
+    }
 };
 
-AssignPattern: () = {
-    DereferenceImp<Identifier> => (),
+Literal: ast::Literal<'input> = {
+    SimpleLiteral,
+    SimdLiteral,
+    ObjectLiteral,
+    ArrayLiteral,
 };
 
-Tuple: () = {
-    "(" ")" => (), // empty tuple
-    "(" Expression "," Comma<Expression> ")" => () // normal tuple
+SimpleLiteral: ast::Literal<'input> = {
+    IntegerLiteral => ast::Literal::Integer(<>),
+    FloatLiteral => ast::Literal::Float(<>),
+    StringLiteral => ast::Literal::String(<>),
+    Label => ast::Literal::Label(<>),
+    "nil" => ast::Literal::Nil,
 };
 
-Literal: () = {
-    IntegerLiteral => (),
-    FloatLiteral => (),
-    StringLiteral => (),
-    SimdLiteral => (),
-    ObjectLiteral => (),
-    Label => (),
+ObjectLiteral: ast::Literal<'input> = {
+    "new" <TypeName?> "{" <Comma<ObjectLiteralItem>> "}" => {
+        let (ty, items) = (<>);
+        let mut map = BTreeMap::new();
+        for (k, v) in items {
+            map.insert(k, v);
+        }
+        ast::Literal::ObjectLiteral(ty, map)
+    },
 };
 
-ObjectLiteral: () = {
-    "new" TypeName? "{" Comma<ObjectLiteralItem> "}" => (),
+ObjectLiteralItem: (&'input str, Option<ast::Expression<'input>>) = {
+     LF* <Identifier> <(":" <Expression>)?> LF* => (<>),
 };
 
-ObjectLiteralItem: () = {
-    Identifier (":" Expression)? => (),
+ArrayLiteral: ast::Literal<'input> = {
+    "[" <Comma<Expression>> "]" => ast::Literal::ArrayLiteral(<>),
+    "[" <Expression> ";" <Expression> "]" => ast::Literal::ArraySplat(<>),
 };
 
-ArrayLiteral: () = {
-    "[" Comma<Expression> "]" => (),
-    "[" Expression ";" Expression "]" => (),
-};
-
-SimdLiteral: () = {
-    "<" Comma<BitwiseOperators> ">" => (),
+SimdLiteral: ast::Literal<'input> = {
+    "<" <Comma<BitwiseOperators>> ">" => ast::Literal::SimdLiteral(<>),
 };
 
 IntegerLiteral: i64 = {
@@ -277,13 +500,17 @@ FloatLiteral: f64 = {
 StringLiteral: Cow<'input, str> = {
     STR_LITERAL => {
         let lit = parse_literal(<>).unwrap();
-        println!("Parsed string literal as {:?}", lit);
+        //println!("Parsed string literal as {:?}", lit);
         lit
     }
 };
 
 Identifier: &'input str = IDENTIFIER => <>;
 Label: &'input str = LABEL => &<>[1..];
+
+IdentifierExpr: ast::Expression<'input> = {
+    Identifier => ast::Expression::NamedReference(<>),
+};
 
 End: () = {
     LF => (),
@@ -301,8 +528,16 @@ Comma<T>: Vec<T> = {
     }
 };
 
-Tier<Op, NextTier>: () = {
-    Tier<Op, NextTier> Op NextTier => (),
+Tier<Op, NextTier>: ast::Expression<'input> = {
+    Tier<Op, NextTier> Op NextTier => {
+        let (lhs, op, rhs) = (<>);
+        let op = ast::BinaryOp {
+            lhs: lhs,
+            rhs: rhs,
+            operator: op
+        };
+        ast::Expression::BinaryOp(Box::new(op))
+    },
     NextTier
 };
 
@@ -325,10 +560,12 @@ extern {
         "in" => (TT::In, <&'input str>),
         "let" => (TT::Let, <&'input str>),
         "loop" => (TT::Loop, <&'input str>),
+        "match" => (TT::Match, <&'input str>),
         "mod" => (TT::Mod, <&'input str>),
         "new" => (TT::New, <&'input str>),
         "nil" => (TT::Nil, <&'input str>),
         "return" => (TT::Return, <&'input str>),
+        "struct" => (TT::Struct, <&'input str>),
         "throw" => (TT::Throw, <&'input str>),
         "trait" => (TT::Trait, <&'input str>),
         "type" => (TT::Type, <&'input str>),
@@ -346,6 +583,7 @@ extern {
         "," => (TT::Comma, <&'input str>),
         "?" => (TT::Question, <&'input str>),
         "." => (TT::Dot, <&'input str>),
+        "=>" => (TT::FatArrow, <&'input str>),
 
         ".." => (TT::RangeExclusive, <&'input str>),
         "..." => (TT::RangeInclusive, <&'input str>),

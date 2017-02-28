@@ -1,0 +1,59 @@
+@lang('iterator)
+trait Iterator {
+    fn next(self)
+}
+
+@lang('into_iterator)
+trait IntoIterator {
+    fn into_iter(self)
+}
+
+impl Iterator {
+    fn map(self, mapper) {
+        new Map { iter: self, mapper }
+    }
+
+    fn filter(self, filter) {
+        new Filter { iter: self, filter }
+    }
+}
+
+impl IntoIterator for Iterator {
+    fn into_iter(self) {
+        self
+    }
+}
+
+struct Map {
+    iter,
+    mapper,
+}
+
+impl Iterator for Map {
+    fn next(self) {
+        if let Some(next) = self.iter.next() {
+            let m = self.mapper
+            return Some(m(next))
+        }
+
+        None
+    }
+}
+
+struct Filter {
+    iter,
+    filter,
+}
+
+impl Iterator for Filter {
+    fn next(self) {
+        let f = self.filter
+        while let Some(next) = self.iter.next() {
+            if f(next) {
+                return Some(next)
+            }
+        }
+
+        None
+    }
+}
