@@ -35,6 +35,10 @@ impl<T> Node<T> {
             end: end,
         }
     }
+
+    pub fn unwrap(self) -> (Location, T, Location) {
+        (self.start, self.node, self.end)
+    }
 }
 
 impl<T> From<(Location, T, Location)> for Node<T> {

@@ -2,6 +2,7 @@ use parser::ast::DeclPattern;
 use parser::ast::ExprNode;
 use parser::ast::ScopeNode;
 
+#[derive(Debug)]
 pub struct ForLoop<'input> {
     pub label: Option<&'input str>,
     pub binding: DeclPattern<'input>,

@@ -3,7 +3,7 @@
 use lexer;
 use lexer::Lexer;
 
-pub mod parser;
+mod parser;
 pub mod ast;
 pub mod string_literal;
 

@@ -1,5 +1,7 @@
 use super::AssignOp;
 use super::BinOp;
+use super::ForLoop;
+use super::IfChain;
 use super::Lambda;
 use super::Literal;
 use super::ScopeNode;
@@ -29,6 +31,9 @@ pub enum Expression<'input> {
     Negate(Box<ExprNode<'input>>),
     Not(Box<ExprNode<'input>>),
     Try(Box<ExprNode<'input>>),
+
+    For(Box<ForLoop<'input>>),
+    If(Box<IfChain<'input>>),
 }
 
 #[derive(Debug)]

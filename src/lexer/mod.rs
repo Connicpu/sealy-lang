@@ -209,7 +209,7 @@ impl<'input> Iterator for Lexer<'input> {
                             if let Ok((_, (tt, _), _)) = *next {
                                 match tt {
                                     TokenType::Dot => continue,
-                                    TokenType::CloseCurly => continue,
+                                    //TokenType::CloseCurly => continue,
                                     TokenType::Else => continue,
                                     TokenType::Semicolon => continue,
 

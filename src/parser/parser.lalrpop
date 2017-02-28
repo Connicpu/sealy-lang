@@ -7,6 +7,7 @@ use std::borrow::Cow;
 use std::str::FromStr;
 use std::collections::BTreeMap;
 
+#[LALR]
 grammar<'input>;
 
 pub seal = Module;
@@ -51,12 +52,12 @@ Attribute: ast::AttributeValue<'input> = {
 
 InnerItem: ast::ItemKind<'input> = {
     UseImport => ast::ItemKind::UseImport(<>),
-    Impl => unimplemented!(),
-    TypeDecl => unimplemented!(),
-    StructDecl => unimplemented!(),
-    TraitDecl => unimplemented!(),
-    EnumDecl => unimplemented!(),
-    Constant => unimplemented!(),
+    Impl => ast::ItemKind::Impl(<>),
+    TypeDecl => ast::ItemKind::TypeDecl(<>),
+    StructDecl => ast::ItemKind::StructDecl(<>),
+    TraitDecl => ast::ItemKind::TraitDecl(<>),
+    EnumDecl => ast::ItemKind::EnumDecl(<>),
+    Constant => ast::ItemKind::Constant(<>),
     Function => ast::ItemKind::Function(<>),
     ModDecl => ast::ItemKind::ModDecl(<>),
 };
@@ -87,56 +88,113 @@ ModDecl: ast::ModDecl<'input> = {
     "mod" <Identifier> "{" <Box<Module>> "}" => ast::ModDecl::Inline(<>),
 };
 
-ExternImport: () = {
-    "extern" "mod" Identifier => (),
+ExternImport: ast::ExternImport<'input> = {
+    "extern" "mod" <Identifier> => ast::ExternImport {
+        name: <>,
+    },
 };
 
-Impl: () = {
-    "impl" (TypeName "for")? TypeName "{" Module "}" => (),
+Impl: ast::Impl<'input> = {
+    "impl" <(<TypeName> "for")?> <TypeName> "{" <Node<Module>> "}" => {
+        let (t, i, m) = (<>);
+        ast::Impl {
+            impl_type: i,
+            interface: t,
+            items: m,
+        }
+    },
 };
 
-TypeDecl: () = {
-    "type" Identifier => (),
+TypeDecl: ast::TypeDecl<'input> = {
+    "type" <Identifier> => ast::TypeDecl {
+        name: <>
+    },
 };
 
-StructDecl: () = {
-    "struct" Identifier "{" StructMembers "}" => (),
+StructDecl: ast::StructDecl<'input> = {
+    "struct" <Identifier> "{" <StructMembers> "}" => {
+        let (name, members) = (<>);
+        ast::StructDecl {
+            name: name,
+            members: members,
+        }   
+    },
 };
 
-StructMembers: () = {
-    LF* (StructMember "," LF*)* => (),
+StructMembers = LF* <(<Node<StructMember>> "," LF*)*>;
+
+StructMember: ast::StructItem<'input> = {
+    Attributes Identifier => {
+        let (a, n) = (<>);
+        ast::StructItem {
+            attributes: a,
+            name: n,
+        }   
+    },
 };
 
-StructMember: () = {
-    Attributes Identifier => (),
+EnumDecl: ast::EnumDecl<'input> = {
+    "enum" <Identifier> "{" <EnumItems> "}" => {
+        let (name, members) = (<>);
+        ast::EnumDecl {
+            name: name,
+            members: members,
+        }   
+    },
 };
 
-EnumDecl: () = {
-    "enum" Identifier "{" EnumItems "}" => (),
+EnumItems = LF* <(<Node<EnumItem>> "," LF*)*>;
+
+EnumItem: ast::EnumItem<'input> = {
+    Attributes Identifier ("(" <Comma<Identifier>> ")")? => {
+        let (attr, name, mem) = (<>);
+        ast::EnumItem {
+            attributes: attr,
+            name: name,
+            members: mem,
+        }   
+    },
 };
 
-EnumItems: () = {
-    LF* (EnumItem "," LF*)* => (),
+TraitDecl: ast::TraitDecl<'input> = {
+    "trait" <Identifier> "{" <TraitItems> "}" => {
+        let (name, members) = (<>);
+        ast::TraitDecl {
+            name: name,
+            members: members,
+        }
+    },
 };
 
-EnumItem: () = {
-    Attributes Identifier ("(" Comma<Identifier> ")")? => (),
+TraitItems = LF* <(<Node<TraitItem>> End*)*>;
+
+TraitItem: ast::TraitItem<'input> = {
+    <Attributes> "fn" <Identifier> "(" <Comma<Identifier>> ")" => {
+        let (a, n, p) = (<>);
+        ast::TraitItem {
+            attributes: a,
+            name: n,
+            kind: ast::TraitItemKind::Function(p),
+        }
+    },
+    <Attributes> "const" <Identifier> => {
+        let (a, n) = (<>);
+        ast::TraitItem {
+            attributes: a,
+            name: n,
+            kind: ast::TraitItemKind::Constant
+        }
+    },
 };
 
-TraitDecl: () = {
-    "trait" Identifier "{" TraitItems "}" => (),
-};
-
-TraitItems: () = {
-    LF* (TraitItem End*)* => (),
-};
-
-TraitItem: () = {
-    Attributes "fn" Identifier "(" Comma<Identifier> ")" => (),
-};
-
-Constant: () = {
-    "const" Identifier "=" Expression End => (),
+Constant: ast::Constant<'input> = {
+    "const" <Identifier> "=" <Expression> End => {
+        let (name, expr) = (<>);
+        ast::Constant {
+            name: name,
+            expression: expr,
+        }
+    },
 };
 
 Function: ast::Function<'input> = {
@@ -223,11 +281,11 @@ InnerExpression: ast::Expression<'input> = {
     Break,
     Continue,
     Return,
-    IfExpression => ast::Expression::Literal(Box::new(ast::Literal::Nil)),
-    MatchExpression => ast::Expression::Literal(Box::new(ast::Literal::Nil)),
-    LoopExpression => ast::Expression::Literal(Box::new(ast::Literal::Nil)),
-    WhileExpression => ast::Expression::Literal(Box::new(ast::Literal::Nil)),
-    ForExpression => ast::Expression::Literal(Box::new(ast::Literal::Nil)),
+    Box<IfExpression> => ast::Expression::If(<>),
+    Box<MatchExpression> => ast::Expression::Literal(Box::new(ast::Literal::Nil)),
+    Box<LoopExpression> => ast::Expression::Literal(Box::new(ast::Literal::Nil)),
+    Box<WhileExpression> => ast::Expression::Literal(Box::new(ast::Literal::Nil)),
+    Box<ForExpression> => ast::Expression::For(<>),
 };
 
 AssignmentOp: ast::Expression<'input> = {
@@ -273,14 +331,38 @@ Return: ast::Expression<'input> = {
     "return" <Box<Expression>> => ast::Expression::Return(<>),
 };
 
-IfExpression: () = {
-    "if" Expression Scope ElseTail? => (),
-    "if" "let" MatchPattern "=" Expression Scope ElseTail? => (),
+IfExpression: ast::IfChain<'input> = {
+    IfChain => {
+        let mut chain = <>;
+        chain.items.reverse();
+        chain
+    },
 };
 
-ElseTail: () = {
-    "else" IfExpression => (),
-    "else" Scope => (),
+IfChain: ast::IfChain<'input> = {
+    "if" <Node<(Expression Scope ElseTail?)>> => {
+        let node = <>;
+        let (l, (c, s, t), r) = node.unwrap();
+        let item = ast::IfItem {
+            condition: c,
+            //binding: None,
+            block: s,
+        };
+        let mut chain = t.unwrap_or_default();
+        chain.items.push((l, item, r).into());
+        chain
+    },
+    "if" "let" <MatchPattern> "=" <Expression> <Scope> <ElseTail?> => unimplemented!(),
+};
+
+ElseTail: ast::IfChain<'input> = {
+    "else" <IfExpression>,
+    "else" <Scope> => {
+        ast::IfChain {
+            items: vec![],
+            else_block: Some(<>),
+        }
+    },
 };
 
 MatchExpression: () = {

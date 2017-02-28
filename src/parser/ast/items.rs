@@ -1,3 +1,4 @@
+use super::ExprNode;
 use super::Literal;
 use super::Node;
 use super::ScopeNode;
@@ -19,6 +20,13 @@ pub struct Item<'input> {
 #[derive(Debug)]
 pub enum ItemKind<'input> {
     UseImport(UseImport<'input>),
+    ExternImport(ExternImport<'input>),
+    Impl(Impl<'input>),
+    TypeDecl(TypeDecl<'input>),
+    StructDecl(StructDecl<'input>),
+    EnumDecl(EnumDecl<'input>),
+    TraitDecl(TraitDecl<'input>),
+    Constant(Constant<'input>),
     Function(Function<'input>),
     ModDecl(ModDecl<'input>),
 }
@@ -42,6 +50,73 @@ pub struct UseImport<'input> {
     pub base: TypeName<'input>,
     pub glob: bool,
     pub multi: Vec<&'input str>,
+}
+
+#[derive(Debug)]
+pub struct ExternImport<'input> {
+    pub name: &'input str,
+}
+
+#[derive(Debug)]
+pub struct Impl<'input> {
+    pub impl_type: TypeName<'input>,
+    pub interface: Option<TypeName<'input>>,
+    pub items: Node<Module<'input>>,
+}
+
+#[derive(Debug)]
+pub struct TypeDecl<'input> {
+    pub name: &'input str,
+}
+
+#[derive(Debug)]
+pub struct StructDecl<'input> {
+    pub name: &'input str,
+    pub members: Vec<Node<StructItem<'input>>>,
+}
+
+#[derive(Debug)]
+pub struct StructItem<'input> {
+    pub attributes: Vec<Node<Attribute<'input>>>,
+    pub name: &'input str,
+}
+
+#[derive(Debug)]
+pub struct EnumDecl<'input> {
+    pub name: &'input str,
+    pub members: Vec<Node<EnumItem<'input>>>,
+}
+
+#[derive(Debug)]
+pub struct EnumItem<'input> {
+    pub attributes: Vec<Node<Attribute<'input>>>,
+    pub name: &'input str,
+    pub members: Option<Vec<&'input str>>,
+}
+
+#[derive(Debug)]
+pub struct TraitDecl<'input> {
+    pub name: &'input str,
+    pub members: Vec<Node<TraitItem<'input>>>,
+}
+
+#[derive(Debug)]
+pub struct TraitItem<'input> {
+    pub attributes: Vec<Node<Attribute<'input>>>,
+    pub name: &'input str,
+    pub kind: TraitItemKind<'input>,
+}
+
+#[derive(Debug)]
+pub enum TraitItemKind<'input> {
+    Function(Vec<&'input str>),
+    Constant,
+}
+
+#[derive(Debug)]
+pub struct Constant<'input> {
+    pub name: &'input str,
+    pub expression: ExprNode<'input>,
 }
 
 #[derive(Debug)]
