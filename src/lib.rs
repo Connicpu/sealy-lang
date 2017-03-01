@@ -1,13 +1,7 @@
 #![feature(alloc, heap_api)]
+
 extern crate alloc;
+pub extern crate seal_lexer as lexer;
+pub extern crate seal_parser as parser;
 
-#[macro_use]
-extern crate lazy_static;
-
-extern crate unicode_xid;
-extern crate lalrpop_util;
-
-pub mod lexer;
-pub mod parser;
 pub mod vm;
-

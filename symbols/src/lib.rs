@@ -1,13 +1,19 @@
+extern crate owning_ref;
+
+use owning_ref::RcRef;
 use std::collections::HashMap;
+use std::rc::Rc;
 use std::u32;
+
+pub type RefString = RcRef<String, str>;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Sym(u32);
 
 #[derive(Clone)]
 pub struct SymTable {
-    names: Vec<String>,
-    lookup: HashMap<String, Sym>,
+    names: Vec<RefString>,
+    lookup: HashMap<RefString, Sym>,
 }
 
 impl SymTable {
@@ -37,9 +43,11 @@ impl SymTable {
 
         assert!(self.names.len() < u32::MAX as usize);
 
+        let s = RcRef::new(Rc::new(label.to_string())).map(|s| &s[..]);
+
         let id = self.names.len() as u32;
-        self.names.push(label.into());
-        self.lookup.insert(label.into(), Sym(id));
+        self.names.push(s.clone());
+        self.lookup.insert(s, Sym(id));
         Sym(id)
     }
 }

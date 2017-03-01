@@ -1,6 +1,8 @@
 #![allow(unused_imports)]
 
-use lexer;
+extern crate lalrpop_util;
+extern crate seal_lexer as lexer;
+
 use lexer::Lexer;
 
 mod parser;

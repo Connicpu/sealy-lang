@@ -1,5 +1,7 @@
 extern crate sealy_lang;
 
+use sealy_lang::lexer::Lexer;
+use sealy_lang::parser;
 use std::env;
 use std::fs::File;
 use std::io::Read;
@@ -13,10 +15,13 @@ fn main() {
     let mut buf = String::with_capacity(file.metadata().unwrap().len() as usize);
     file.read_to_string(&mut buf).unwrap();
     drop(file);
-
     let input = &buf[..];
-    let lexer = sealy_lang::lexer::Lexer::new(input);
-    let result = sealy_lang::parser::parse(lexer);
+
+    // Wrap the input in our lexer
+    let lexer = Lexer::new(input);
+    // Parse the input
+    let result = parser::parse(lexer);
+    // Print out the AST
     println!("{:#?}", result);
 
     if let Ok(ref m) = result {
@@ -34,6 +39,7 @@ fn print_functions(src: &str, module: &sealy_lang::parser::ast::Module) {
                 let rhs = func.decl_end.index;
                 println!("{}", &src[lhs..rhs]);
             }
+            ast::ItemKind::Module(ref module) => {}
             _ => (),
         }
     }

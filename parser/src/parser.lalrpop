@@ -1,8 +1,8 @@
 use lexer;
 use lexer::TokenType as TT;
-use parser::ast;
-use parser::ast::Node;
-use parser::string_literal::parse_literal;
+use ast;
+use ast::Node;
+use string_literal::parse_literal;
 use std::borrow::Cow;
 use std::str::FromStr;
 use std::collections::BTreeMap;

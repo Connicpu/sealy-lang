@@ -1,4 +1,4 @@
-use lexer::TokenType as TT;
+use TokenType as TT;
 
 pub fn match_keyword(ident: &str) -> Option<TT> {
     KEYWORDS.binary_search_by_key(&ident, |tup| tup.1).ok().map(|i| KEYWORDS[i].0)

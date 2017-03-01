@@ -1,6 +1,6 @@
-use lexer::TokenType as TT;
-use lexer::dfa::Dfa;
-use lexer::emoji::EmojiChar;
+use TokenType as TT;
+use dfa::Dfa;
+use emoji::EmojiChar;
 use unicode_xid::UnicodeXID;
 
 pub fn create_dfa() -> Dfa<TT, char> {

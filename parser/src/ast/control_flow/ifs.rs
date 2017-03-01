@@ -1,6 +1,6 @@
-use parser::ast::ExprNode;
-use parser::ast::Node;
-use parser::ast::ScopeNode;
+use ast::ExprNode;
+use ast::Node;
+use ast::ScopeNode;
 
 #[derive(Debug)]
 pub struct IfChain<'input> {

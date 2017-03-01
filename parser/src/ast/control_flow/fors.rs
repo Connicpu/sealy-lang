@@ -1,6 +1,6 @@
-use parser::ast::DeclPattern;
-use parser::ast::ExprNode;
-use parser::ast::ScopeNode;
+use ast::DeclPattern;
+use ast::ExprNode;
+use ast::ScopeNode;
 
 #[derive(Debug)]
 pub struct ForLoop<'input> {

@@ -1,3 +1,8 @@
+#[macro_use]
+extern crate lazy_static;
+
+extern crate unicode_xid;
+
 use std::iter::Peekable;
 use std::str::CharIndices;
 

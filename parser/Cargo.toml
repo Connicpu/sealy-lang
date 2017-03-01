@@ -1,0 +1,12 @@
+[package]
+authors = ["Connor Hilarides <connorcpu@live.com>"]
+name = "seal-parser"
+version = "0.1.0"
+build = "build.rs"
+
+[build-dependencies]
+lalrpop = "0.12.5"
+
+[dependencies]
+lalrpop-util = "0.12.5"
+seal-lexer = { path = "../lexer" }

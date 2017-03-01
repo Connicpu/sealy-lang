@@ -1,0 +1,7 @@
+[package]
+name = "seal-parser-passes"
+version = "0.1.0"
+authors = ["Connor Hilarides <connorcpu@live.com>"]
+
+[dependencies]
+seal-parser = { path = "../parser" }
