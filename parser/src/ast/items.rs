@@ -4,132 +4,133 @@ use super::Node;
 use super::ScopeNode;
 use super::TypeName;
 use lexer::Location;
+use sym::Sym;
 
 #[derive(Debug)]
-pub struct Module<'input> {
-    pub docs: Vec<&'input str>,
-    pub items: Vec<Node<Item<'input>>>,
+pub struct Module {
+    pub docs: Vec<String>,
+    pub items: Vec<Node<Item>>,
 }
 
 #[derive(Debug)]
-pub struct Item<'input> {
-    pub attributes: Vec<Node<Attribute<'input>>>,
-    pub item: Node<ItemKind<'input>>,
+pub struct Item {
+    pub attributes: Vec<Node<Attribute>>,
+    pub item: Node<ItemKind>,
 }
 
 #[derive(Debug)]
-pub enum ItemKind<'input> {
-    UseImport(UseImport<'input>),
-    ExternImport(ExternImport<'input>),
-    Impl(Impl<'input>),
-    TypeDecl(TypeDecl<'input>),
-    StructDecl(StructDecl<'input>),
-    EnumDecl(EnumDecl<'input>),
-    TraitDecl(TraitDecl<'input>),
-    Constant(Constant<'input>),
-    Function(Function<'input>),
-    ModDecl(ModDecl<'input>),
+pub enum ItemKind {
+    UseImport(UseImport),
+    ExternImport(ExternImport),
+    Impl(Impl),
+    TypeDecl(TypeDecl),
+    StructDecl(StructDecl),
+    EnumDecl(EnumDecl),
+    TraitDecl(TraitDecl),
+    Constant(Constant),
+    Function(Function),
+    ModDecl(ModDecl),
 }
 
 #[derive(Debug)]
-pub enum Attribute<'input> {
-    Doc(&'input str),
-    Attribute(AttributeValue<'input>),
+pub enum Attribute {
+    Doc(String),
+    Attribute(AttributeValue),
 }
 
 #[derive(Debug)]
-pub enum AttributeValue<'input> {
-    Id(&'input str),
-    IdValue(&'input str, Box<Node<AttributeValue<'input>>>),
-    IdList(&'input str, Vec<Node<AttributeValue<'input>>>),
-    Literal(Node<Literal<'input>>),
+pub enum AttributeValue {
+    Id(Sym),
+    IdValue(Sym, Box<Node<AttributeValue>>),
+    IdList(Sym, Vec<Node<AttributeValue>>),
+    Literal(Node<Literal>),
 }
 
 #[derive(Debug)]
-pub struct UseImport<'input> {
-    pub base: TypeName<'input>,
+pub struct UseImport {
+    pub base: TypeName,
     pub glob: bool,
-    pub multi: Vec<&'input str>,
+    pub multi: Vec<Sym>,
 }
 
 #[derive(Debug)]
-pub struct ExternImport<'input> {
-    pub name: &'input str,
+pub struct ExternImport {
+    pub name: Sym,
 }
 
 #[derive(Debug)]
-pub struct Impl<'input> {
-    pub impl_type: TypeName<'input>,
-    pub interface: Option<TypeName<'input>>,
-    pub items: Node<Module<'input>>,
+pub struct Impl {
+    pub impl_type: Node<TypeName>,
+    pub interface: Option<Node<TypeName>>,
+    pub items: Node<Module>,
 }
 
 #[derive(Debug)]
-pub struct TypeDecl<'input> {
-    pub name: &'input str,
+pub struct TypeDecl {
+    pub name: Sym,
 }
 
 #[derive(Debug)]
-pub struct StructDecl<'input> {
-    pub name: &'input str,
-    pub members: Vec<Node<StructItem<'input>>>,
+pub struct StructDecl {
+    pub name: Sym,
+    pub members: Vec<Node<StructItem>>,
 }
 
 #[derive(Debug)]
-pub struct StructItem<'input> {
-    pub attributes: Vec<Node<Attribute<'input>>>,
-    pub name: &'input str,
+pub struct StructItem {
+    pub attributes: Vec<Node<Attribute>>,
+    pub name: Sym,
 }
 
 #[derive(Debug)]
-pub struct EnumDecl<'input> {
-    pub name: &'input str,
-    pub members: Vec<Node<EnumItem<'input>>>,
+pub struct EnumDecl {
+    pub name: Sym,
+    pub members: Vec<Node<EnumItem>>,
 }
 
 #[derive(Debug)]
-pub struct EnumItem<'input> {
-    pub attributes: Vec<Node<Attribute<'input>>>,
-    pub name: &'input str,
-    pub members: Option<Vec<&'input str>>,
+pub struct EnumItem {
+    pub attributes: Vec<Node<Attribute>>,
+    pub name: Sym,
+    pub members: Option<Vec<Sym>>,
 }
 
 #[derive(Debug)]
-pub struct TraitDecl<'input> {
-    pub name: &'input str,
-    pub members: Vec<Node<TraitItem<'input>>>,
+pub struct TraitDecl {
+    pub name: Sym,
+    pub members: Vec<Node<TraitItem>>,
 }
 
 #[derive(Debug)]
-pub struct TraitItem<'input> {
-    pub attributes: Vec<Node<Attribute<'input>>>,
-    pub name: &'input str,
-    pub kind: TraitItemKind<'input>,
+pub struct TraitItem {
+    pub attributes: Vec<Node<Attribute>>,
+    pub name: Sym,
+    pub kind: TraitItemKind,
 }
 
 #[derive(Debug)]
-pub enum TraitItemKind<'input> {
-    Function(Vec<&'input str>),
+pub enum TraitItemKind {
+    Function(Vec<Sym>),
     Constant,
 }
 
 #[derive(Debug)]
-pub struct Constant<'input> {
-    pub name: &'input str,
-    pub expression: ExprNode<'input>,
+pub struct Constant {
+    pub name: Sym,
+    pub expression: ExprNode,
 }
 
 #[derive(Debug)]
-pub struct Function<'input> {
-    pub name: &'input str,
-    pub parameters: Vec<&'input str>,
-    pub body: ScopeNode<'input>,
+pub struct Function {
+    pub name: Sym,
+    pub parameters: Vec<Sym>,
+    pub body: ScopeNode,
     pub throws: bool,
     pub decl_end: Location,
 }
 
 #[derive(Debug)]
-pub enum ModDecl<'input> {
-    Import(&'input str),
-    Inline(&'input str, Box<Module<'input>>),
+pub enum ModDecl {
+    Import(Sym),
+    Inline(Sym, Box<Module>),
 }

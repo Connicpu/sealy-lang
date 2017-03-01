@@ -2,8 +2,10 @@
 
 extern crate lalrpop_util;
 extern crate seal_lexer as lexer;
+extern crate seal_symbols as sym;
 
 use lexer::Lexer;
+use sym::SymTable;
 
 mod parser;
 pub mod ast;
@@ -15,6 +17,6 @@ pub type Error<'i> = ::lalrpop_util::ParseError<lexer::Location,
 
 // force monomorphization here
 #[inline(never)]
-pub fn parse(lexer: Lexer) -> Result<ast::Module, Error> {
-    parser::parse_seal(lexer)
+pub fn parse<'i>(lexer: Lexer<'i>, symbols: &mut SymTable) -> Result<ast::Module, Error<'i>> {
+    parser::parse_seal(symbols, lexer)
 }

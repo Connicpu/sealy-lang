@@ -1,14 +1,15 @@
 use ast::ExprNode;
 use ast::Node;
 use ast::ScopeNode;
+use sym::Sym;
 
 #[derive(Debug)]
-pub struct IfChain<'input> {
-    pub items: Vec<Node<IfItem<'input>>>,
-    pub else_block: Option<ScopeNode<'input>>,
+pub struct IfChain {
+    pub items: Vec<Node<IfItem>>,
+    pub else_block: Option<ScopeNode>,
 }
 
-impl<'input> Default for IfChain<'input> {
+impl Default for IfChain {
     fn default() -> Self {
         IfChain {
             items: vec![],
@@ -18,8 +19,8 @@ impl<'input> Default for IfChain<'input> {
 }
 
 #[derive(Debug)]
-pub struct IfItem<'input> {
-    pub condition: ExprNode<'input>,
-    //pub binding: Option<MatchPattern<'input>>,
-    pub block: ScopeNode<'input>,
+pub struct IfItem {
+    pub condition: ExprNode,
+    //pub binding: Option<MatchPattern>,
+    pub block: ScopeNode,
 }

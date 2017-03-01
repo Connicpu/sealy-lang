@@ -2,16 +2,17 @@ use super::ExprNode;
 use super::TypeName;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
+use sym::Sym;
 
 #[derive(Debug)]
-pub enum Literal<'input> {
+pub enum Literal {
     Nil,
     Integer(i64),
     Float(f64),
-    String(Cow<'input, str>),
-    Label(&'input str),
-    SimdLiteral(Vec<ExprNode<'input>>),
-    ArrayLiteral(Vec<ExprNode<'input>>),
-    ArraySplat(ExprNode<'input>, ExprNode<'input>),
-    ObjectLiteral(Option<TypeName<'input>>, BTreeMap<&'input str, Option<ExprNode<'input>>>),
+    String(String),
+    Label(Sym),
+    SimdLiteral(Vec<ExprNode>),
+    ArrayLiteral(Vec<ExprNode>),
+    ArraySplat(ExprNode, ExprNode),
+    ObjectLiteral(Option<TypeName>, BTreeMap<Sym, Option<ExprNode>>),
 }

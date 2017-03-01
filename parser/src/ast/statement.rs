@@ -1,24 +1,25 @@
 use super::ExprNode;
 use super::Node;
 use std::collections::BTreeMap;
+use sym::Sym;
 
 #[derive(Debug)]
-pub enum Statement<'input> {
-    Expression(ExprNode<'input>),
-    VariableDecl(Box<Node<VariableDecl<'input>>>),
+pub enum Statement {
+    Expression(ExprNode),
+    VariableDecl(Box<Node<VariableDecl>>),
 }
 
 #[derive(Debug)]
-pub struct VariableDecl<'input> {
-    pub pattern: DeclPattern<'input>,
-    pub expression: Option<ExprNode<'input>>,
+pub struct VariableDecl {
+    pub pattern: DeclPattern,
+    pub expression: Option<ExprNode>,
 }
 
 #[derive(Debug)]
-pub enum DeclPattern<'input> {
-    Identifier(&'input str),
-    Tuple(Vec<DeclPattern<'input>>, bool),
-    Array(Vec<DeclPattern<'input>>, bool),
-    Simd(Vec<&'input str>, bool),
-    Object(BTreeMap<&'input str, Option<DeclPattern<'input>>>),
+pub enum DeclPattern {
+    Identifier(Sym),
+    Tuple(Vec<DeclPattern>, bool),
+    Array(Vec<DeclPattern>, bool),
+    Simd(Vec<Sym>, bool),
+    Object(BTreeMap<Sym, Option<DeclPattern>>),
 }

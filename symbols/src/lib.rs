@@ -23,7 +23,7 @@ impl SymTable {
             lookup: Default::default(),
         };
 
-        table.insert("_");
+        table.intern("_");
 
         table
     }
@@ -32,11 +32,11 @@ impl SymTable {
         Sym(0)
     }
 
-    pub fn get_name(&self, sym: Sym) -> Option<&str> {
-        self.names.get(sym.0 as usize).map(|s| &s[..])
+    pub fn get_name(&self, sym: Sym) -> Option<RefString> {
+        self.names.get(sym.0 as usize).cloned()
     }
 
-    pub fn insert(&mut self, label: &str) -> Sym {
+    pub fn intern(&mut self, label: &str) -> Sym {
         if let Some(&sym) = self.lookup.get(label) {
             return sym;
         }

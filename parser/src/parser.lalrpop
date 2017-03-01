@@ -6,14 +6,16 @@ use string_literal::parse_literal;
 use std::borrow::Cow;
 use std::str::FromStr;
 use std::collections::BTreeMap;
+use sym::SymTable;
+use sym::Sym;
 
 #[LALR]
-grammar<'input>;
+grammar<'input>(syms: &mut SymTable);
 
 pub seal = Module;
 
-Module: ast::Module<'input> = {
-    <MOD_DOC_COMMENT*> LF* <(<Node<Item>> End*)*> => {
+Module: ast::Module = {
+    <ModDocComment*> LF* <(<Node<Item>> End*)*> => {
         let (docs, items) = (<>);
         ast::Module {
             docs: docs,
@@ -22,7 +24,7 @@ Module: ast::Module<'input> = {
     },
 };
 
-Item: ast::Item<'input> = {
+Item: ast::Item = {
     Attributes Node<InnerItem> => {
         let (a, i) = (<>);
         ast::Item {
@@ -32,16 +34,16 @@ Item: ast::Item<'input> = {
     },
 };
 
-Attributes: Vec<ast::Node<ast::Attribute<'input>>> = {
+Attributes: Vec<ast::Node<ast::Attribute>> = {
     (<Node<RootAttribute>> LF+)*,
 };
 
-RootAttribute: ast::Attribute<'input> = {
+RootAttribute: ast::Attribute = {
     "@" <Attribute> => ast::Attribute::Attribute(<>),
-    DOC_COMMENT => ast::Attribute::Doc(<>),
+    DocComment => ast::Attribute::Doc(<>),
 };
 
-Attribute: ast::AttributeValue<'input> = {
+Attribute: ast::AttributeValue = {
     Identifier ("=" <Box<Node<Attribute>>>)? => match (<>) {
         (i, None) => ast::AttributeValue::Id(i),
         (i, Some(v)) => ast::AttributeValue::IdValue(i, v),
@@ -50,7 +52,7 @@ Attribute: ast::AttributeValue<'input> = {
     Node<Literal> => ast::AttributeValue::Literal(<>),
 };
 
-InnerItem: ast::ItemKind<'input> = {
+InnerItem: ast::ItemKind = {
     UseImport => ast::ItemKind::UseImport(<>),
     Impl => ast::ItemKind::Impl(<>),
     TypeDecl => ast::ItemKind::TypeDecl(<>),
@@ -62,7 +64,7 @@ InnerItem: ast::ItemKind<'input> = {
     ModDecl => ast::ItemKind::ModDecl(<>),
 };
 
-UseImport: ast::UseImport<'input> = {
+UseImport: ast::UseImport = {
     "use" <TypeName> => ast::UseImport {
         base: <>,
         glob: false,
@@ -83,19 +85,19 @@ UseImport: ast::UseImport<'input> = {
     },
 };
 
-ModDecl: ast::ModDecl<'input> = {
+ModDecl: ast::ModDecl = {
     "mod" <Identifier> => ast::ModDecl::Import(<>),
     "mod" <Identifier> "{" <Box<Module>> "}" => ast::ModDecl::Inline(<>),
 };
 
-ExternImport: ast::ExternImport<'input> = {
+ExternImport: ast::ExternImport = {
     "extern" "mod" <Identifier> => ast::ExternImport {
         name: <>,
     },
 };
 
-Impl: ast::Impl<'input> = {
-    "impl" <(<TypeName> "for")?> <TypeName> "{" <Node<Module>> "}" => {
+Impl: ast::Impl = {
+    "impl" <(<Node<TypeName>> "for")?> <Node<TypeName>> "{" <Node<Module>> "}" => {
         let (t, i, m) = (<>);
         ast::Impl {
             impl_type: i,
@@ -105,13 +107,13 @@ Impl: ast::Impl<'input> = {
     },
 };
 
-TypeDecl: ast::TypeDecl<'input> = {
+TypeDecl: ast::TypeDecl = {
     "type" <Identifier> => ast::TypeDecl {
         name: <>
     },
 };
 
-StructDecl: ast::StructDecl<'input> = {
+StructDecl: ast::StructDecl = {
     "struct" <Identifier> "{" <StructMembers> "}" => {
         let (name, members) = (<>);
         ast::StructDecl {
@@ -123,7 +125,7 @@ StructDecl: ast::StructDecl<'input> = {
 
 StructMembers = LF* <(<Node<StructMember>> "," LF*)*>;
 
-StructMember: ast::StructItem<'input> = {
+StructMember: ast::StructItem = {
     Attributes Identifier => {
         let (a, n) = (<>);
         ast::StructItem {
@@ -133,7 +135,7 @@ StructMember: ast::StructItem<'input> = {
     },
 };
 
-EnumDecl: ast::EnumDecl<'input> = {
+EnumDecl: ast::EnumDecl = {
     "enum" <Identifier> "{" <EnumItems> "}" => {
         let (name, members) = (<>);
         ast::EnumDecl {
@@ -145,7 +147,7 @@ EnumDecl: ast::EnumDecl<'input> = {
 
 EnumItems = LF* <(<Node<EnumItem>> "," LF*)*>;
 
-EnumItem: ast::EnumItem<'input> = {
+EnumItem: ast::EnumItem = {
     Attributes Identifier ("(" <Comma<Identifier>> ")")? => {
         let (attr, name, mem) = (<>);
         ast::EnumItem {
@@ -156,7 +158,7 @@ EnumItem: ast::EnumItem<'input> = {
     },
 };
 
-TraitDecl: ast::TraitDecl<'input> = {
+TraitDecl: ast::TraitDecl = {
     "trait" <Identifier> "{" <TraitItems> "}" => {
         let (name, members) = (<>);
         ast::TraitDecl {
@@ -168,7 +170,7 @@ TraitDecl: ast::TraitDecl<'input> = {
 
 TraitItems = LF* <(<Node<TraitItem>> End*)*>;
 
-TraitItem: ast::TraitItem<'input> = {
+TraitItem: ast::TraitItem = {
     <Attributes> "fn" <Identifier> "(" <Comma<Identifier>> ")" => {
         let (a, n, p) = (<>);
         ast::TraitItem {
@@ -187,7 +189,7 @@ TraitItem: ast::TraitItem<'input> = {
     },
 };
 
-Constant: ast::Constant<'input> = {
+Constant: ast::Constant = {
     "const" <Identifier> "=" <Expression> End => {
         let (name, expr) = (<>);
         ast::Constant {
@@ -197,7 +199,7 @@ Constant: ast::Constant<'input> = {
     },
 };
 
-Function: ast::Function<'input> = {
+Function: ast::Function = {
     "fn" <Identifier> "(" <Comma<Identifier>> ")" <"?"?> <@R> <Scope> => {
         let (n, p, t, e, s) = (<>);
         ast::Function {
@@ -208,10 +210,10 @@ Function: ast::Function<'input> = {
             decl_end: e,
         }
     },
-    "fn" <"new"> "(" <Comma<Identifier>> ")" <"?"?> <@R> <Scope> => {
-        let (n, p, t, e, s) = (<>);
+    "fn" "new" "(" <Comma<Identifier>> ")" <"?"?> <@R> <Scope> => {
+        let (p, t, e, s) = (<>);
         ast::Function {
-            name: n,
+            name: syms.intern("new"),
             parameters: p,
             throws: t.is_some(),
             body: s,
@@ -222,7 +224,7 @@ Function: ast::Function<'input> = {
 
 Scope = Node<ScopeInner>;
 
-ScopeInner: ast::Scope<'input> = {
+ScopeInner: ast::Scope = {
     "{" <(<Statement> End)*> <Statement?> "}" => {
         let (mut v, e) = (<>);
         match e {
@@ -235,12 +237,12 @@ ScopeInner: ast::Scope<'input> = {
     }
 };
 
-Statement: ast::Statement<'input> = {
+Statement: ast::Statement = {
     Box<Node<VariableDecl>> => ast::Statement::VariableDecl(<>),
     Expression => ast::Statement::Expression(<>),
 };
 
-VariableDecl: ast::VariableDecl<'input> = {
+VariableDecl: ast::VariableDecl = {
     "let" <DeclPattern> <("=" <Expression>)?> => {
         let (p, e) = (<>);
         ast::VariableDecl {
@@ -250,7 +252,7 @@ VariableDecl: ast::VariableDecl<'input> = {
     },
 };
 
-DeclPattern: ast::DeclPattern<'input> = {
+DeclPattern: ast::DeclPattern = {
     Identifier => ast::DeclPattern::Identifier(<>),
     "(" <Comma<DeclPattern>> <".."?> ")" => {
         let (v, b) = (<>);
@@ -271,7 +273,7 @@ DeclPattern: ast::DeclPattern<'input> = {
 
 Expression = Node<InnerExpression>;
 
-InnerExpression: ast::Expression<'input> = {
+InnerExpression: ast::Expression = {
     Box<Scope> => ast::Expression::Scope(<>),
     Box<Lambda> => ast::Expression::Lambda(<>),
     BinaryOperators,
@@ -288,7 +290,7 @@ InnerExpression: ast::Expression<'input> = {
     Box<ForExpression> => ast::Expression::For(<>),
 };
 
-AssignmentOp: ast::Expression<'input> = {
+AssignmentOp: ast::Expression = {
     Node<AssignPattern> AssignOps Expression => {
         let (lhs, op, rhs) = (<>);
         ast::Expression::AssignmentOp(Box::new(ast::AssignmentOp {
@@ -299,15 +301,15 @@ AssignmentOp: ast::Expression<'input> = {
     },
 };
 
-AssignPattern: ast::Expression<'input> = {
+AssignPattern: ast::Expression = {
     DereferenceImp<IdentifierExpr>,
 };
 
-Throw: ast::Expression<'input> = {
+Throw: ast::Expression = {
     "throw" <Box<Expression>> => ast::Expression::Throw(<>),
 };
 
-Break: ast::Expression<'input> = {
+Break: ast::Expression = {
     "break" <Label?> <(":" <Expression>)?> => {
         let (l, v) = (<>);
         ast::Expression::Break(Box::new(ast::Break {
@@ -317,7 +319,7 @@ Break: ast::Expression<'input> = {
     },
 };
 
-Continue: ast::Expression<'input> = {
+Continue: ast::Expression = {
     "continue" <Label?> <(":" <Expression>)?> => {
         let (l, v) = (<>);
         ast::Expression::Continue(Box::new(ast::Continue {
@@ -327,11 +329,11 @@ Continue: ast::Expression<'input> = {
     },
 };
 
-Return: ast::Expression<'input> = {
+Return: ast::Expression = {
     "return" <Box<Expression>> => ast::Expression::Return(<>),
 };
 
-IfExpression: ast::IfChain<'input> = {
+IfExpression: ast::IfChain = {
     IfChain => {
         let mut chain = <>;
         chain.items.reverse();
@@ -339,7 +341,7 @@ IfExpression: ast::IfChain<'input> = {
     },
 };
 
-IfChain: ast::IfChain<'input> = {
+IfChain: ast::IfChain = {
     "if" <Node<(Expression Scope ElseTail?)>> => {
         let node = <>;
         let (l, (c, s, t), r) = node.unwrap();
@@ -355,7 +357,7 @@ IfChain: ast::IfChain<'input> = {
     "if" "let" <MatchPattern> "=" <Expression> <Scope> <ElseTail?> => unimplemented!(),
 };
 
-ElseTail: ast::IfChain<'input> = {
+ElseTail: ast::IfChain = {
     "else" <IfExpression>,
     "else" <Scope> => {
         ast::IfChain {
@@ -391,7 +393,7 @@ WhileExpression: () = {
     (Label ":")? "while" "let" MatchPattern "=" Expression Scope LoopElse? => (),
 };
 
-ForExpression: ast::ForLoop<'input> = {
+ForExpression: ast::ForLoop = {
     (<Label> ":")? "for" DeclPattern "in" Expression Scope LoopElse? => {
         let (label, _, binding, _, expr, body, elseb) = (<>);
         ast::ForLoop {
@@ -406,7 +408,7 @@ ForExpression: ast::ForLoop<'input> = {
 
 LoopElse = "else" <Scope>;
 
-Lambda: ast::Lambda<'input> = {
+Lambda: ast::Lambda = {
     LambdaHeader "?"? Expression => {
         let (p, t, b) = (<>);
         ast::Lambda {
@@ -418,7 +420,7 @@ Lambda: ast::Lambda<'input> = {
 };
 
 // Returns the list of parameter names
-LambdaHeader: Vec<&'input str> = {
+LambdaHeader: Vec<Sym> = {
     "||" => vec![],
     "|" <Comma<Identifier>> "|",
 };
@@ -502,7 +504,7 @@ ShiftOperators = Tier<ShiftOps, AddSubOperators>;
 AddSubOperators = Tier<AddSubOps, MulDivOperators>;
 MulDivOperators = Tier<MulDivOps, UnaryOperators>;
 
-UnaryOperators: ast::Expression<'input> = {
+UnaryOperators: ast::Expression = {
     "-" <Box<Node<UnaryOperators>>> => ast::Expression::Negate(<>),
     "!" <Box<Node<UnaryOperators>>> => ast::Expression::Not(<>),
     <Box<Node<Dereference>>> "?" => ast::Expression::Try(<>),
@@ -511,7 +513,7 @@ UnaryOperators: ast::Expression<'input> = {
 };
 
 Dereference = DereferenceImp<Term>;
-DereferenceImp<N>: ast::Expression<'input> = {
+DereferenceImp<N>: ast::Expression = {
     <Node<Dereference>> "." <Identifier> => {
         let (lhs, rhs) = (<>);
         ast::Expression::MemberAccess(Box::new(ast::MemberAccess {
@@ -544,7 +546,7 @@ DereferenceImp<N>: ast::Expression<'input> = {
 };
 
 #[inline]
-TypeName: ast::TypeName<'input> = {
+TypeName: ast::TypeName = {
     (<Identifier> ".")* Identifier => {
         let (mut v, i) = (<>);
         v.push(i);
@@ -554,7 +556,7 @@ TypeName: ast::TypeName<'input> = {
     },
 };
 
-Term: ast::Expression<'input> = {
+Term: ast::Expression = {
     "(" <InnerExpression> ")",
     IdentifierExpr,
     Literal Identifier? => {
@@ -570,7 +572,7 @@ Term: ast::Expression<'input> = {
     Tuple,
 };
 
-Tuple: ast::Expression<'input> = {
+Tuple: ast::Expression = {
     "(" ")" => ast::Expression::EmptyTuple, // empty tuple
     "(" <Expression> "," <Comma<Expression>> ")" => {
         let (e, mut v) = (<>);
@@ -579,14 +581,14 @@ Tuple: ast::Expression<'input> = {
     }
 };
 
-Literal: ast::Literal<'input> = {
+Literal: ast::Literal = {
     SimpleLiteral,
     SimdLiteral,
     ObjectLiteral,
     ArrayLiteral,
 };
 
-SimpleLiteral: ast::Literal<'input> = {
+SimpleLiteral: ast::Literal = {
     IntegerLiteral => ast::Literal::Integer(<>),
     FloatLiteral => ast::Literal::Float(<>),
     StringLiteral => ast::Literal::String(<>),
@@ -594,7 +596,7 @@ SimpleLiteral: ast::Literal<'input> = {
     "nil" => ast::Literal::Nil,
 };
 
-ObjectLiteral: ast::Literal<'input> = {
+ObjectLiteral: ast::Literal = {
     "new" <TypeName?> "{" <Comma<ObjectLiteralItem>> "}" => {
         let (ty, items) = (<>);
         let mut map = BTreeMap::new();
@@ -605,16 +607,16 @@ ObjectLiteral: ast::Literal<'input> = {
     },
 };
 
-ObjectLiteralItem: (&'input str, Option<ast::ExprNode<'input>>) = {
+ObjectLiteralItem: (Sym, Option<ast::ExprNode>) = {
      LF* <Identifier> <(":" <Expression>)?> LF* => (<>),
 };
 
-ArrayLiteral: ast::Literal<'input> = {
+ArrayLiteral: ast::Literal = {
     "[" <Comma<Expression>> "]" => ast::Literal::ArrayLiteral(<>),
     "[" <Expression> ";" <Expression> "]" => ast::Literal::ArraySplat(<>),
 };
 
-SimdLiteral: ast::Literal<'input> = {
+SimdLiteral: ast::Literal = {
     "<" <Comma<Node<BitwiseOperators>>> ">" => ast::Literal::SimdLiteral(<>),
 };
 
@@ -634,18 +636,22 @@ FloatLiteral: f64 = {
 };
 
 // TODO: Parse string literal into actual string data
-StringLiteral: Cow<'input, str> = {
+StringLiteral: String = {
     STR_LITERAL => {
-        let lit = parse_literal(<>).unwrap();
-        //println!("Parsed string literal as {:?}", lit);
-        lit
+        parse_literal(<>).unwrap().into_owned()
     }
 };
 
-Identifier: &'input str = IDENTIFIER => <>;
-Label: &'input str = LABEL => &<>[1..];
+Identifier: Sym = IDENTIFIER => syms.intern(<>);
+Label: Sym = LABEL => syms.intern(&<>[1..]);
+DocComment: String = {
+    DOC_COMMENT => <>.into(),
+};
+ModDocComment: String = {
+    MOD_DOC_COMMENT => <>.into(),
+};
 
-IdentifierExpr: ast::Expression<'input> = {
+IdentifierExpr: ast::Expression = {
     Identifier => ast::Expression::NamedReference(<>),
 };
 
@@ -665,7 +671,7 @@ Comma<T>: Vec<T> = {
     }
 };
 
-Tier<Op, NextTier>: ast::Expression<'input> = {
+Tier<Op, NextTier>: ast::Expression = {
     Node<Tier<Op, NextTier>> Op Node<NextTier> => {
         let (lhs, op, rhs) = (<>);
         let op = ast::BinaryOp {

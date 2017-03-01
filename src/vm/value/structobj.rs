@@ -1,7 +1,7 @@
 use alloc::heap::allocate;
 use std::collections::HashMap;
 use std::rc::Rc;
-use vm::value::Sym;
+use sym::Sym;
 use vm::value::Value;
 use vm::value::traits::Implementation;
 

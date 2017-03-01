@@ -1,4 +1,6 @@
+use sym::Sym;
+
 #[derive(Debug)]
-pub struct TypeName<'input> {
-    pub parts: Vec<&'input str>,
+pub struct TypeName {
+    pub parts: Vec<Sym>,
 }

@@ -1,9 +1,9 @@
 use super::Node;
 use super::Statement;
 
-pub type ScopeNode<'input> = Node<Scope<'input>>;
+pub type ScopeNode = Node<Scope>;
 
 #[derive(Debug)]
-pub struct Scope<'input> {
-    pub statements: Vec<Statement<'input>>,
+pub struct Scope {
+    pub statements: Vec<Statement>,
 }

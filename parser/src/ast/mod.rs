@@ -39,6 +39,10 @@ impl<T> Node<T> {
     pub fn unwrap(self) -> (Location, T, Location) {
         (self.start, self.node, self.end)
     }
+
+    pub fn span<'s>(&self, src: &'s str) -> &'s str {
+        &src[self.start.index..self.end.index]
+    }
 }
 
 impl<T> From<(Location, T, Location)> for Node<T> {

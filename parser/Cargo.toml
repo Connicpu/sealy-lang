@@ -10,3 +10,4 @@ lalrpop = "0.12.5"
 [dependencies]
 lalrpop-util = "0.12.5"
 seal-lexer = { path = "../lexer" }
+seal-symbols = { path = "../symbols" }

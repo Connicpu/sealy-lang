@@ -2,11 +2,14 @@ extern crate sealy_lang;
 
 use sealy_lang::lexer::Lexer;
 use sealy_lang::parser;
+use sealy_lang::sym::SymTable;
 use std::env;
 use std::fs::File;
 use std::io::Read;
 
 fn main() {
+    let mut symbols = SymTable::new();
+
     let script = env::args().nth(1);
     let script = script.as_ref().map(|s| &s[..]);
     let script = script.unwrap_or("scripts/parsetest.seal");
@@ -20,7 +23,7 @@ fn main() {
     // Wrap the input in our lexer
     let lexer = Lexer::new(input);
     // Parse the input
-    let result = parser::parse(lexer);
+    let result = parser::parse(lexer, &mut symbols);
     // Print out the AST
     println!("{:#?}", result);
 
@@ -39,7 +42,22 @@ fn print_functions(src: &str, module: &sealy_lang::parser::ast::Module) {
                 let rhs = func.decl_end.index;
                 println!("{}", &src[lhs..rhs]);
             }
-            ast::ItemKind::Module(ref module) => {}
+            ast::ItemKind::Impl(ref imp) => {
+                let typen = imp.impl_type.span(src);
+                let ifacen = imp.interface.as_ref().map(|i| i.span(src));
+                if let Some(ifacen) = ifacen {
+                    println!("impl {} for {} {{", ifacen, typen);
+                } else {
+                    println!("impl {} {{", typen);
+                }
+
+                print_functions(src, &imp.items.node);
+
+                println!("}}");
+            }
+            ast::ItemKind::ModDecl(ast::ModDecl::Inline(_, ref module)) => {
+                print_functions(src, module);
+            }
             _ => (),
         }
     }
