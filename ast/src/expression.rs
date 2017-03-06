@@ -84,7 +84,6 @@ pub struct FunctionCall {
 #[derive(Debug)]
 pub struct Continue {
     pub label: Option<Sym>,
-    pub value: Option<ExprNode>,
 }
 
 #[derive(Debug)]

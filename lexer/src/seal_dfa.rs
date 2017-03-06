@@ -48,35 +48,6 @@ pub fn create_dfa() -> Dfa<TT, char> {
     dfa.transition(multi_maybe_end, multi_comment, '\0');
     dfa.transition(multi_body, multi_comment, '\0');
 
-    // Identifiers
-    let identifier = dfa.create(TT::Identifier);
-    let identifier_emb = dfa.create(TT::Identifier);
-
-    let ident_edge = |dfa: &mut Dfa<TT, char>, from| {
-        dfa.transition(from, identifier, '_');
-        dfa.transition_complex(from, identifier, |c| UnicodeXID::is_xid_continue(*c));
-        dfa.transition_complex(from, identifier_emb, |c| c.is_emoji_modifier_base());
-        dfa.transition_complex(from, identifier, |c| c.is_emoji());
-    };
-
-    ident_edge(&mut dfa, root);
-    ident_edge(&mut dfa, identifier);
-    ident_edge(&mut dfa, identifier_emb);
-    dfa.transition_complex(identifier_emb, identifier, |c| c.is_emoji_modifier());
-
-    // mod= special case
-    let modeq_m = dfa.create(TT::Identifier);
-    let modeq_mo = dfa.create(TT::Identifier);
-    let modeq_mod = dfa.create(TT::Mod);
-    let modeq = dfa.create(TT::ModAssign);
-    dfa.transition(root, modeq_m, 'm');
-    dfa.transition(modeq_m, modeq_mo, 'o');
-    dfa.transition(modeq_mo, modeq_mod, 'd');
-    dfa.transition(modeq_mod, modeq, '=');
-    ident_edge(&mut dfa, modeq_m);
-    ident_edge(&mut dfa, modeq_mo);
-    ident_edge(&mut dfa, modeq_mod);
-
     // Integers
     let int_literal = dfa.create(TT::IntLiteral);
     let int_separator = dfa.create(None);
@@ -144,6 +115,35 @@ pub fn create_dfa() -> Dfa<TT, char> {
     dfa.transition_complex(scientific_start, scientific_literal, |c| c.is_digit(10));
     dfa.transition_complex(signed_scientific, scientific_literal, |c| c.is_digit(10));
 
+    // Identifiers
+    let identifier = dfa.create(TT::Identifier);
+    let identifier_emb = dfa.create(TT::Identifier);
+
+    let ident_edge = |dfa: &mut Dfa<TT, char>, from| {
+        dfa.transition(from, identifier, '_');
+        dfa.transition_complex(from, identifier, |c| UnicodeXID::is_xid_continue(*c));
+        dfa.transition_complex(from, identifier_emb, |c| c.is_emoji_modifier_base());
+        dfa.transition_complex(from, identifier, |c| c.is_emoji());
+    };
+
+    ident_edge(&mut dfa, root);
+    ident_edge(&mut dfa, identifier);
+    ident_edge(&mut dfa, identifier_emb);
+    dfa.transition_complex(identifier_emb, identifier, |c| c.is_emoji_modifier());
+
+    // mod= special case
+    let modeq_m = dfa.create(TT::Identifier);
+    let modeq_mo = dfa.create(TT::Identifier);
+    let modeq_mod = dfa.create(TT::Mod);
+    let modeq = dfa.create(TT::ModAssign);
+    dfa.transition(root, modeq_m, 'm');
+    dfa.transition(modeq_m, modeq_mo, 'o');
+    dfa.transition(modeq_mo, modeq_mod, 'd');
+    dfa.transition(modeq_mod, modeq, '=');
+    ident_edge(&mut dfa, modeq_m);
+    ident_edge(&mut dfa, modeq_mo);
+    ident_edge(&mut dfa, modeq_mod);
+
     // Strings
     let string_literal = dfa.create(TT::StringLiteral);
     let string_body = dfa.create(None);
@@ -157,31 +157,34 @@ pub fn create_dfa() -> Dfa<TT, char> {
 
     // Char literals
     let char_literal = dfa.create(TT::CharLiteral);
-    let label1 = dfa.create(TT::Label);
-    let label = dfa.create(TT::Label);
-    let label_begin = dfa.create(None);
+    let char_begin = dfa.create(None);
     let char_escape = dfa.create(None);
     let char_end = dfa.create(None);
     let char_u_begin = dfa.create(None);
     let char_u_value = dfa.create(None);
 
-    dfa.transition(root, label_begin, '\'');
+    dfa.transition(root, char_begin, '\'');
 
-    dfa.transition_default(label_begin, char_end);
-    dfa.transition_complex(label_begin, label1, |c| UnicodeXID::is_xid_start(*c));
-    dfa.transition(label_begin, char_escape, '\\');
-
-    dfa.transition(label1, char_literal, '\'');
-    dfa.transition_complex(label1, label, |c| UnicodeXID::is_xid_continue(*c));
-    dfa.transition_complex(label, label, |c| UnicodeXID::is_xid_continue(*c));
+    dfa.transition_default(char_begin, char_end);
+    dfa.transition(char_begin, char_escape, '\\');
 
     dfa.transition_default(char_escape, char_end);
     dfa.transition(char_escape, char_u_begin, 'u');
-    dfa.transition(char_end, char_literal, '\\');
+    dfa.transition(char_end, char_literal, '\'');
 
     dfa.transition(char_u_begin, char_u_value, '{');
     dfa.transition(char_u_value, char_end, '}');
     dfa.transition_complex(char_u_value, char_u_value, |c| c.is_digit(16));
+
+    // Labels
+    let label_start = dfa.create(None);
+    let label = dfa.create(TT::Label);
+
+    dfa.transition(root, label_start, ':');
+    dfa.transition(label_start, label, '_');
+    dfa.transition(label, label, '_');
+    dfa.transition_complex(label_start, label, |c| UnicodeXID::is_xid_start(*c));
+    dfa.transition_complex(label, label, |c| UnicodeXID::is_xid_continue(*c));
 
     // Operators
     dfa.insert_string(root, "{".chars(), TT::OpenCurly);

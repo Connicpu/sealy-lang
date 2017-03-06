@@ -1,6 +1,5 @@
 use super::ExprNode;
 use super::TypeName;
-use std::borrow::Cow;
 use std::collections::BTreeMap;
 use sym::Sym;
 

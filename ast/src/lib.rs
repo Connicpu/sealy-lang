@@ -8,6 +8,9 @@ pub use self::scope::*;
 pub use self::statement::*;
 pub use self::type_name::*;
 
+extern crate seal_lexer as lexer;
+extern crate seal_symbols as sym;
+
 use lexer::Location;
 
 pub mod control_flow;

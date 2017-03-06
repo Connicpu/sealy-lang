@@ -8,6 +8,7 @@ use std::str::FromStr;
 use std::collections::BTreeMap;
 use sym::SymTable;
 use sym::Sym;
+use num_literal::{parse_int, parse_float};
 
 #[LALR]
 grammar<'input>(syms: &mut SymTable);
@@ -310,7 +311,7 @@ Throw: ast::Expression = {
 };
 
 Break: ast::Expression = {
-    "break" <Label?> <(":" <Expression>)?> => {
+    "break" <Identifier?> <(":" <Expression>)?> => {
         let (l, v) = (<>);
         ast::Expression::Break(Box::new(ast::Break {
             label: l,
@@ -320,11 +321,9 @@ Break: ast::Expression = {
 };
 
 Continue: ast::Expression = {
-    "continue" <Label?> <(":" <Expression>)?> => {
-        let (l, v) = (<>);
+    "continue" <Identifier?> => {
         ast::Expression::Continue(Box::new(ast::Continue {
-            label: l,
-            value: v,
+            label: <>,
         }))
     },
 };
@@ -385,16 +384,16 @@ MatchPattern: () = {
 };
 
 LoopExpression: () = {
-    (Label ":")? "loop" Scope => (),
+    (Identifier ":")? "loop" Scope => (),
 };
 
 WhileExpression: () = {
-    (Label ":")? "while" Expression Scope LoopElse? => (),
-    (Label ":")? "while" "let" MatchPattern "=" Expression Scope LoopElse? => (),
+    (Identifier ":")? "while" Expression Scope LoopElse? => (),
+    (Identifier ":")? "while" "let" MatchPattern "=" Expression Scope LoopElse? => (),
 };
 
 ForExpression: ast::ForLoop = {
-    (<Label> ":")? "for" DeclPattern "in" Expression Scope LoopElse? => {
+    (<Identifier> ":")? "for" DeclPattern "in" Expression Scope LoopElse? => {
         let (label, _, binding, _, expr, body, elseb) = (<>);
         ast::ForLoop {
             label: label,
@@ -622,17 +621,17 @@ SimdLiteral: ast::Literal = {
 
 IntegerLiteral: i64 = {
     DecIntegerLiteral,
-    HEX_LITERAL => i64::from_str_radix(&<>[2..], 16).unwrap(),
-    OCT_LITERAL => i64::from_str_radix(&<>[2..], 8).unwrap(),
-    BIN_LITERAL => i64::from_str_radix(&<>[2..], 2).unwrap(),
+    HEX_LITERAL => parse_int(&<>[2..], 16),
+    OCT_LITERAL => parse_int(&<>[2..], 8),
+    BIN_LITERAL => parse_int(&<>[2..], 2),
 };
 
 DecIntegerLiteral: i64 = {
-    INT_LITERAL => i64::from_str_radix(<>, 10).unwrap(),
+    INT_LITERAL => parse_int(<>, 10),
 };
 
 FloatLiteral: f64 = {
-    FLOAT_LITERAL => f64::from_str(<>).unwrap(),
+    FLOAT_LITERAL => parse_float(<>),
 };
 
 // TODO: Parse string literal into actual string data

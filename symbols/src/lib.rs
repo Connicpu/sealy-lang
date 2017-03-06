@@ -2,6 +2,7 @@ extern crate owning_ref;
 
 use owning_ref::RcRef;
 use std::collections::HashMap;
+use std::fmt;
 use std::rc::Rc;
 use std::u32;
 
@@ -49,5 +50,11 @@ impl SymTable {
         self.names.push(s.clone());
         self.lookup.insert(s, Sym(id));
         Sym(id)
+    }
+}
+
+impl fmt::Debug for SymTable {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_map().entries(self.names.iter().enumerate()).finish()
     }
 }

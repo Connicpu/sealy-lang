@@ -1,7 +1,7 @@
 @foo("foo")
 type Foo;
 
-@bar('bar)
+@bar(:bar)
 struct Bar {
     @baz(5)
     baz,
@@ -23,18 +23,18 @@ mod foo {
     }
 }
 
-@lang('option)
+@lang(:option)
 enum Option {
     None,
     Some(value),
 }
 
-@lang('iterator)
+@lang(:iterator)
 trait Iterator {
     fn next(self);
 }
 
-@lang('into_iterator)
+@lang(:into_iterator)
 trait IntoIterator {
     fn into_iter(self);
 }
@@ -102,16 +102,16 @@ fn main() {
         }
     }
 
-    let z = 'foo: loop {
-        'bar: for x in foo() {
+    let z = foo: loop {
+        bar: for x in foo() {
             if x.is_special() {
-                break 'foo: x
+                break foo: x
             } else if x.is_silly() {
                 loop {
                     match x.try_unsilly() {
-                        'failure => break 'bar,
-                        'success => break,
-                        'progress => (),
+                        :failure => break bar,
+                        :success => break,
+                        :progress => (),
                     }
                 }
             }
@@ -123,7 +123,7 @@ fn main() {
 
 type Degrees;
 impl Degrees {
-    @suffix('deg)
+    @suffix(:deg)
     fn new(value) {
         new Degrees { value }
     }
@@ -139,7 +139,7 @@ impl Degrees {
 
 type Radians;
 impl Radians {
-    @suffix('rad)
+    @suffix(:rad)
     fn new(value) {
         new Radians { value }
     }

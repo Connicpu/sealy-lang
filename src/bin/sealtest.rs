@@ -26,14 +26,15 @@ fn main() {
     let result = parser::parse(lexer, &mut symbols);
     // Print out the AST
     println!("{:#?}", result);
+    println!("{:#?}", symbols);
 
     if let Ok(ref m) = result {
         print_functions(input, m);
     }
 }
 
-fn print_functions(src: &str, module: &sealy_lang::parser::ast::Module) {
-    use sealy_lang::parser::ast;
+fn print_functions(src: &str, module: &sealy_lang::ast::Module) {
+    use sealy_lang::ast;
     for item in module.items.iter() {
         let ref item = item.node.item;
         match item.node {

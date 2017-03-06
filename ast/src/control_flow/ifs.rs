@@ -1,7 +1,6 @@
-use ast::ExprNode;
-use ast::Node;
-use ast::ScopeNode;
-use sym::Sym;
+use ExprNode;
+use Node;
+use ScopeNode;
 
 #[derive(Debug)]
 pub struct IfChain {

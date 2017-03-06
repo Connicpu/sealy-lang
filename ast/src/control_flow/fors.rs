@@ -1,6 +1,6 @@
-use ast::DeclPattern;
-use ast::ExprNode;
-use ast::ScopeNode;
+use DeclPattern;
+use ExprNode;
+use ScopeNode;
 use sym::Sym;
 
 #[derive(Debug)]

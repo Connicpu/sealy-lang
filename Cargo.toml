@@ -15,5 +15,7 @@ unicode-xid = "0.0.4"
 
 seal-lexer = { path = "lexer" }
 seal-symbols = { path = "symbols" }
+seal-ast = { path = "ast" }
 seal-parser = { path = "parser" }
 seal-parser-passes = { path = "parser-passes" }
+seal-ir = { path = "ir" }
