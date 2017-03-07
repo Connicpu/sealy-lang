@@ -294,7 +294,7 @@ pub struct Token<'input> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(i32)]
 pub enum TokenType {
-    Identifier,
+    Identifier = 0,
     Whitespace,
     NewLine,
 

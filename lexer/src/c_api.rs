@@ -32,8 +32,7 @@ pub unsafe extern "C" fn seal_next_token(lexer: *mut Lexer<'static>, token: &mut
 
     match result {
         Ok((left, tok, right)) => {
-            token.is_ok = true;
-            token.value.tok = Tok {
+            token.tok = Tok {
                 left: left,
                 right: right,
                 tt: tok.0,
@@ -43,7 +42,6 @@ pub unsafe extern "C" fn seal_next_token(lexer: *mut Lexer<'static>, token: &mut
             NextResult::Token
         }
         Err(err) => {
-            token.is_ok = false;
             let (c, loc, e) = match err {
                 LexicalError::Unexpected(c, loc) => {
                     (c as u32, loc, TokErrorKind::UnexpectedCharacter)
@@ -52,7 +50,7 @@ pub unsafe extern "C" fn seal_next_token(lexer: *mut Lexer<'static>, token: &mut
                     (0, loc, TokErrorKind::TooManyCloseCurlies)
                 }
             };
-            token.value.err = TokError {
+            token.err = TokError {
                 error: e,
                 loc: loc,
                 character: c,
@@ -72,14 +70,7 @@ pub enum NextResult {
 
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub struct TokResult {
-    pub is_ok: bool,
-    pub value: TokResultValue,
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub union TokResultValue {
+pub union TokResult {
     pub tok: Tok,
     pub err: TokError,
 }
@@ -106,6 +97,6 @@ pub struct TokError {
 #[repr(i32)]
 #[derive(Copy, Clone)]
 pub enum TokErrorKind {
-    UnexpectedCharacter,
+    UnexpectedCharacter = 0,
     TooManyCloseCurlies,
 }
