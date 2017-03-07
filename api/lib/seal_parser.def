@@ -1,0 +1,5 @@
+EXPORTS
+    seal_parse
+    seal_free_ast
+    seal_free_parse_error
+    seal_print_ast

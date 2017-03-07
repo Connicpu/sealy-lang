@@ -6,12 +6,13 @@ use std::fmt;
 use std::rc::Rc;
 use std::u32;
 
+pub mod c_api;
+
 pub type RefString = RcRef<String, str>;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Sym(u32);
+pub struct Sym(pub u32);
 
-#[derive(Clone)]
 pub struct SymTable {
     names: Vec<RefString>,
     lookup: HashMap<RefString, Sym>,

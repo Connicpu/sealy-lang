@@ -11,15 +11,15 @@ extern "C" {
 /// string lives until after the last time you call next_token or clone_lexer on
 /// any lexer using this input. Construction will fail (and return null) in
 /// exactly 1 case: input is not valid UTF-8 data.
-struct Lexer *     seal_create_lexer(const uint8_t *input, size_t len);
+struct seal_lexer *   seal_create_lexer(const uint8_t *input, size_t len);
 
 /// Creates a copy of the lexer in exactly the same state. Both lexers will produce
 /// identical values on the nth subsequent call to next_token. Both lexers point to
 /// the original input string.
-struct Lexer *     seal_clone_lexer(const struct Lexer *lexer);
+struct seal_lexer *   seal_clone_lexer(const struct seal_lexer *lexer);
 
 /// Frees the lexer object. The pointer is no longer valid after this call.
-void               seal_free_lexer(struct Lexer *lexer);
+void                  seal_free_lexer(struct seal_lexer *lexer);
 
 /// Attempts to retrieve the next token from the stream. Different mapipulations will
 /// be performed on `token` depending on the return value of this function:
@@ -29,9 +29,9 @@ void               seal_free_lexer(struct Lexer *lexer);
 ///
 /// Once None or Error has been returned, you should no longer call this function
 /// or clone_lexer
-enum TokNextResult seal_next_token(struct Lexer *lexer, union TokResult *token);
+enum seal_next_result seal_next_token(struct seal_lexer *lexer, union seal_tok_result *token);
 
-enum TokenType {
+enum seal_tt {
     TT_Identifier = 0,
     TT_Whitespace,
     TT_NewLine,
@@ -142,41 +142,41 @@ enum TokenType {
     TT_COUNT,
 };
 
-enum TokNextResult {
-    Tok_None = 0,
-    Tok_Token = 1,
-    Tok_Error = 2,
+enum seal_next_result {
+    SNR_None = 0,
+    SNR_Token = 1,
+    SNR_Error = 2,
 };
 
-enum TokErrorKind {
-    Tok_UnexpectedCharacter = 0,
-    Tok_TooManyCloseCurlies,
+enum seal_token_error_kind {
+    STEK_UnexpectedCharacter = 0,
+    STEK_TooManyCloseCurlies,
 };
 
-struct TokLocation {
+struct seal_location {
     size_t line;
     size_t column;
     size_t index;
 };
 
-struct TokError {
-    enum TokErrorKind error;
-    struct TokLocation loc;
+struct seal_token_error {
+    enum seal_token_error_kind error;
+    struct seal_location loc;
     uint32_t character;
 };
 
-struct Tok {
-    struct TokLocation left;
-    struct TokLocation right;
+struct seal_token {
+    struct seal_location left;
+    struct seal_location right;
 
-    enum TokenType tt;
+    enum seal_tt tt;
     const uint8_t *span;
     size_t span_len;
 };
 
-union TokResult {
-    struct Tok tok;
-    struct TokError err;
+union seal_tok_result {
+    struct seal_token tok;
+    struct seal_token_error err;
 };
 
 #ifdef __cplusplus
@@ -187,21 +187,71 @@ union TokResult {
 
 #if ((defined(_MSC_VER)) && (_MSC_VER >= 1910)) || __cplusplus >= 201700
 #include <string_view>
-inline Lexer *seal_create_lexer(const std::string_view &input)
+inline seal_lexer *seal_create_lexer(std::string_view input)
 {
     return seal_create_lexer((const uint8_t *)input.data(), input.length());
 }
 #else
 #include <string>
-inline Lexer *seal_create_lexer(const std::string &input)
+inline seal_lexer *seal_create_lexer(const std::string &input)
 {
     return seal_create_lexer((const uint8_t *)input.data(), input.length());
 }
 #endif
 
-inline TokNextResult seal_next_token(Lexer *lexer, TokResult &token)
+inline seal_next_result seal_next_token(seal_lexer *lexer, seal_tok_result &token)
 {
     return seal_next_token(lexer, &token);
 }
+
+#if ((defined(_MSC_VER)) && (_MSC_VER >= 1910)) || __cplusplus >= 201700
+#include <memory>
+#include <variant>
+#include <optional>
+namespace seal
+{
+    struct lexer_free
+    {
+        void operator()(seal_lexer *ptr)
+        {
+            seal_free_lexer(ptr);
+        }
+    };
+
+    struct lexer
+    {
+        std::unique_ptr<seal_lexer, lexer_free> ptr;
+
+        lexer() = default;
+
+        lexer(std::string_view input)
+            : ptr(seal_create_lexer(input))
+        {
+        }
+
+        lexer clone() const
+        {
+            lexer lex;
+            lex.ptr.reset(seal_clone_lexer(ptr.get()));
+            return std::move(lex);
+        }
+
+        using next_value = std::variant<seal_token, seal_token_error>;
+        std::optional<next_value> next()
+        {
+            seal_tok_result temp;
+            switch (seal_next_token(ptr.get(), temp))
+            {
+                case SNR_None:
+                    return std::nullopt;
+                case SNR_Token:
+                    return temp.tok;
+                case SNR_Error:
+                    return temp.err;
+            }
+        }
+    };
+}
+#endif
 
 #endif

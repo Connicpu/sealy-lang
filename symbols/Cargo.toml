@@ -3,5 +3,8 @@ authors = ["Connor Hilarides <connorcpu@live.com>"]
 name = "seal-symbols"
 version = "0.1.0"
 
+[lib]
+crate-type = ["rlib", "cdylib"]
+
 [dependencies]
 owning_ref = "0.2.4"

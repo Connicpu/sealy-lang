@@ -1,0 +1,6 @@
+EXPORTS
+    seal_create_sym_table
+    seal_free_sym_table
+    seal_intern_sym
+    seal_lookup_sym
+    

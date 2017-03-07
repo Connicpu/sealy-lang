@@ -4,6 +4,9 @@ name = "seal-parser"
 version = "0.1.0"
 build = "build.rs"
 
+[lib]
+crate-type = ["rlib", "cdylib"]
+
 [build-dependencies]
 lalrpop = "0.12.5"
 

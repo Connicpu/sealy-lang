@@ -1,3 +1,4 @@
+#![feature(untagged_unions)]
 #![allow(unused_imports)]
 
 extern crate lalrpop_util;
@@ -11,6 +12,7 @@ use sym::SymTable;
 mod parser;
 pub mod string_literal;
 pub mod num_literal;
+pub mod c_api;
 
 pub type Error<'i> = ::lalrpop_util::ParseError<lexer::Location,
                                                   (lexer::TokenType, &'i str),
