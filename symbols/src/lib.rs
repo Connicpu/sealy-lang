@@ -33,8 +33,12 @@ impl SymTable {
         Sym(0)
     }
 
-    pub fn get_name(&self, sym: Sym) -> Option<RefString> {
+    pub fn lookup(&self, sym: Sym) -> Option<RefString> {
         self.names.get(sym.0 as usize).cloned()
+    }
+
+    pub fn lookup_str(&self, sym: Sym) -> Option<&str> {
+        self.names.get(sym.0 as usize).map(|s| &s[..])
     }
 
     pub fn intern(&mut self, label: &str) -> Sym {

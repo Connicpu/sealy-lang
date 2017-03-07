@@ -3,6 +3,9 @@ authors = ["Connor Hilarides <connorcpu@live.com>"]
 name = "seal-lexer"
 version = "0.1.0"
 
+[lib]
+crate-type = ["rlib", "cdylib"]
+
 [dependencies]
 lazy_static = "0.2.2"
 unicode-xid = "0.0.4"

@@ -371,16 +371,33 @@ MatchExpression: () = {
 };
 
 MatchItem: () = {
-    MatchPattern "=>" Expression => (),
+    <MatchPattern> "=>" <Expression> => (),
 };
 
-MatchPattern: () = {
-    Identifier,
-    SimpleLiteral,
-    (Identifier ("." Identifier)*)? "(" Comma<MatchPattern> ".."? ")" => (),
-    (Identifier ("." Identifier)*)? "{" Comma<(Identifier (":" DeclPattern)?)> "}" => (),
-    "[" Comma<MatchPattern> ".."? "]" => (),
-    "<" Comma<Identifier> ".."? ">" => (),
+MatchPattern = Node<MatchPatternInner>;
+MatchPatternInner: ast::MatchPattern = {
+    Identifier => match syms.lookup_str(<>) {
+        Some("_") => ast::MatchPattern::Any,
+        _ => ast::MatchPattern::Variable(<>),
+    },
+    ".." => ast::MatchPattern::AnySplat,
+    SimpleLiteral => ast::MatchPattern::Literal(<>),
+    <TypeName?> "(" <Comma<MatchPattern>> ")" => {
+        let (t, i) = (<>);
+        ast::MatchPattern::Tuple {
+            enum_type: t,
+            items: i,
+        }   
+    },
+    <TypeName?> "{" <Comma<Node<(Identifier (":" <MatchPattern>)?)>>> "}" => {
+        let (t, i) = (<>);
+        ast::MatchPattern::Object {
+            object_type: t,
+            items: i,
+        }
+    },
+    "[" <Comma<MatchPattern>> "]" => ast::MatchPattern::Array(<>),
+    "<" <Comma<MatchPattern>> ">" => ast::MatchPattern::Simd(<>),
 };
 
 LoopExpression: () = {

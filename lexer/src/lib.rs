@@ -1,3 +1,5 @@
+#![feature(untagged_unions)]
+
 #[macro_use]
 extern crate lazy_static;
 
@@ -10,6 +12,7 @@ pub mod dfa;
 pub mod emoji;
 pub mod keywords;
 pub mod seal_dfa;
+pub mod c_api;
 
 pub type Spanned<Tok, Loc, Error> = Result<(Loc, Tok, Loc), Error>;
 pub type Tok<'input> = (TokenType, &'input str);
@@ -269,6 +272,7 @@ impl<'input> Iterator for Lexer<'input> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+#[repr(C)]
 pub struct Location {
     pub line: usize,
     pub column: usize,
@@ -288,6 +292,7 @@ pub struct Token<'input> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(i32)]
 pub enum TokenType {
     Identifier,
     Whitespace,

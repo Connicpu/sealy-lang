@@ -1,0 +1,5 @@
+EXPORTS
+    seal_create_lexer
+    seal_clone_lexer
+    seal_free_lexer
+    seal_next_token
