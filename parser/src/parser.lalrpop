@@ -5,6 +5,7 @@ use ast::Node;
 use string_literal::parse_literal;
 use std::borrow::Cow;
 use std::str::FromStr;
+use std::rc::Rc;
 use std::collections::BTreeMap;
 use sym::SymTable;
 use sym::Sym;
@@ -607,8 +608,8 @@ Literal: ast::Literal = {
 SimpleLiteral: ast::Literal = {
     IntegerLiteral => ast::Literal::Integer(<>),
     FloatLiteral => ast::Literal::Float(<>),
-    StringLiteral => ast::Literal::String(<>),
-    Label => ast::Literal::Label(<>),
+    StringLiteral => ast::Literal::String(Rc::new(<>)),
+    Label => ast::Literal::Symbol(<>),
     "nil" => ast::Literal::Nil,
 };
 
@@ -619,7 +620,11 @@ ObjectLiteral: ast::Literal = {
         for (k, v) in items {
             map.insert(k, v);
         }
-        ast::Literal::ObjectLiteral(ty, map)
+        let obj = ast::ObjectLiteral {
+            type_constructor: ty,
+            fields: map,
+        };
+        ast::Literal::ObjectLiteral(Box::new(obj))
     },
 };
 
@@ -628,12 +633,19 @@ ObjectLiteralItem: (Sym, Option<ast::ExprNode>) = {
 };
 
 ArrayLiteral: ast::Literal = {
-    "[" <Comma<Expression>> "]" => ast::Literal::ArrayLiteral(<>),
-    "[" <Expression> ";" <Expression> "]" => ast::Literal::ArraySplat(<>),
+    "[" <Comma<Expression>> "]" => ast::Literal::ArrayLiteral(Box::new(<>)),
+    "[" <Expression> ";" <Expression> "]" => {
+        let (val, c) = (<>);
+        let a = ast::ArraySplat {
+            value: val,
+            count: c,
+        };
+        ast::Literal::ArraySplat(Box::new(a))
+    },
 };
 
 SimdLiteral: ast::Literal = {
-    "<" <Comma<Node<BitwiseOperators>>> ">" => ast::Literal::SimdLiteral(<>),
+    "<" <Comma<Node<BitwiseOperators>>> ">" => ast::Literal::SimdLiteral(Box::new(<>)),
 };
 
 IntegerLiteral: i64 = {

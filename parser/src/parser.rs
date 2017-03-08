@@ -5,6 +5,7 @@ use ast::Node;
 use string_literal::parse_literal;
 use std::borrow::Cow;
 use std::str::FromStr;
+use std::rc::Rc;
 use std::collections::BTreeMap;
 use sym::SymTable;
 use sym::Sym;
@@ -21,6 +22,7 @@ mod __parse__seal {
     use string_literal::parse_literal;
     use std::borrow::Cow;
     use std::str::FromStr;
+    use std::rc::Rc;
     use std::collections::BTreeMap;
     use sym::SymTable;
     use sym::Sym;
@@ -16070,7 +16072,7 @@ pub fn __action159<
     (_, __0, _): (lexer::Location, String, lexer::Location),
 ) -> ast::Literal
 {
-    ast::Literal::String(__0)
+    ast::Literal::String(Rc::new(__0))
 }
 
 #[allow(unused_variables)]
@@ -16081,7 +16083,7 @@ pub fn __action160<
     (_, __0, _): (lexer::Location, Sym, lexer::Location),
 ) -> ast::Literal
 {
-    ast::Literal::Label(__0)
+    ast::Literal::Symbol(__0)
 }
 
 #[allow(unused_variables)]
@@ -16113,7 +16115,11 @@ pub fn __action162<
         for (k, v) in items {
             map.insert(k, v);
         }
-        ast::Literal::ObjectLiteral(ty, map)
+        let obj = ast::ObjectLiteral {
+            type_constructor: ty,
+            fields: map,
+        };
+        ast::Literal::ObjectLiteral(Box::new(obj))
     }
 }
 
@@ -16141,7 +16147,7 @@ pub fn __action164<
     (_, _, _): (lexer::Location, &'input str, lexer::Location),
 ) -> ast::Literal
 {
-    ast::Literal::ArrayLiteral(__0)
+    ast::Literal::ArrayLiteral(Box::new(__0))
 }
 
 #[allow(unused_variables)]
@@ -16156,7 +16162,14 @@ pub fn __action165<
     (_, _, _): (lexer::Location, &'input str, lexer::Location),
 ) -> ast::Literal
 {
-    ast::Literal::ArraySplat(__0, __1)
+    {
+        let (val, c) = (__0, __1);
+        let a = ast::ArraySplat {
+            value: val,
+            count: c,
+        };
+        ast::Literal::ArraySplat(Box::new(a))
+    }
 }
 
 #[allow(unused_variables)]
@@ -16169,7 +16182,7 @@ pub fn __action166<
     (_, _, _): (lexer::Location, &'input str, lexer::Location),
 ) -> ast::Literal
 {
-    ast::Literal::SimdLiteral(__0)
+    ast::Literal::SimdLiteral(Box::new(__0))
 }
 
 #[allow(unused_variables)]
