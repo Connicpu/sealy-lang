@@ -78,10 +78,11 @@ pub union TokResult {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct Tok {
+    pub tt: TokenType,
+
     pub left: Location,
     pub right: Location,
 
-    pub tt: TokenType,
     pub span: *const u8,
     pub span_len: usize,
 }

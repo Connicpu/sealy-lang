@@ -3,6 +3,6 @@ use sym::Sym;
 
 #[derive(Debug)]
 pub struct Loop {
-    pub label: Sym,
-    pub body: ScopeNode,
+    pub label: Option<Sym>,
+    pub block: ScopeNode,
 }

@@ -154,9 +154,7 @@ enum seal_token_error_kind {
 };
 
 struct seal_location {
-    size_t line;
-    size_t column;
-    size_t index;
+    uint32_t index;
 };
 
 struct seal_token_error {
@@ -166,10 +164,11 @@ struct seal_token_error {
 };
 
 struct seal_token {
+    enum seal_tt tt;
+
     struct seal_location left;
     struct seal_location right;
 
-    enum seal_tt tt;
     const uint8_t *span;
     size_t span_len;
 };
@@ -218,6 +217,25 @@ namespace seal
         }
     };
 
+    struct token
+    {
+        seal_tt tt;
+        seal_location left, right;
+        std::string_view span;
+    };
+
+    struct token_result
+    {
+        token_result(token t) : var(t) {}
+        token_result(seal_token_error e) : var(e) {}
+
+        std::variant<token, seal_token_error> var;
+
+        bool is_ok() const { return var.index() == 0; }
+        const token &tok() const { return std::get<0>(var); }
+        const seal_token_error &err() const { return std::get<1>(var); }
+    };
+
     struct lexer
     {
         std::unique_ptr<seal_lexer, lexer_free> ptr;
@@ -236,8 +254,7 @@ namespace seal
             return std::move(lex);
         }
 
-        using next_value = std::variant<seal_token, seal_token_error>;
-        std::optional<next_value> next()
+        std::optional<token_result> next()
         {
             seal_tok_result temp;
             switch (seal_next_token(ptr.get(), temp))
@@ -245,7 +262,16 @@ namespace seal
                 case SNR_None:
                     return std::nullopt;
                 case SNR_Token:
-                    return temp.tok;
+                    return token
+                    {
+                        temp.tok.tt,
+                        temp.tok.left,
+                        temp.tok.right,
+                        {
+                            (const char *)temp.tok.span,
+                            temp.tok.span_len,
+                        },
+                    };
                 case SNR_Error:
                     return temp.err;
             }

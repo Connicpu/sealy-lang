@@ -39,8 +39,8 @@ fn print_functions(src: &str, module: &sealy_lang::ast::Module) {
         let ref item = item.node.item;
         match item.node {
             ast::ItemKind::Function(ref func) => {
-                let lhs = item.start.index;
-                let rhs = func.decl_end.index;
+                let lhs = item.start.index as usize;
+                let rhs = func.decl_end.index as usize;
                 println!("{}", &src[lhs..rhs]);
             }
             ast::ItemKind::Impl(ref imp) => {

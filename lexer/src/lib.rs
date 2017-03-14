@@ -42,11 +42,7 @@ impl<'input> Lexer<'input> {
         let inner = InnerLexer {
             source: input,
             chars: input.char_indices().peekable(),
-            loc: Location {
-                line: 1,
-                column: 1,
-                index: 0,
-            },
+            loc: Location { index: 0 },
         };
 
         let inner = WhitespaceStripper { inner: inner };
@@ -85,20 +81,14 @@ impl<'input> Iterator for InnerLexer<'input> {
                 Some(i) => i,
             };
 
-            self.loc.index = i;
-            self.loc.column += 1;
-
-            if c == '\n' {
-                self.loc.line += 1;
-                self.loc.column = 1;
-            }
+            self.loc.index = i as u32;
 
             if let Some(next) = dfa.next(node, &c) {
                 if let Some(&state) = dfa.state(next) {
                     let mut end = self.loc;
-                    end.index = i + c.len_utf8();
+                    end.index = (i + c.len_utf8()) as u32;
 
-                    let span = &self.source[start.index..end.index];
+                    let span = &self.source[start.index as usize..end.index as usize];
 
                     let state = if state == TokenType::Whitespace && span.contains('\n') {
                         TokenType::NewLine
@@ -133,8 +123,7 @@ impl<'input> Iterator for InnerLexer<'input> {
             None => {
                 let (i, _) = initial_iter.next().unwrap();
                 self.loc = start;
-                self.loc.column += 1;
-                self.loc.index = i;
+                self.loc.index = i as u32;
                 self.chars = initial_iter;
                 Err(LexicalError::Unexpected(first, start))
             }
@@ -274,9 +263,7 @@ impl<'input> Iterator for Lexer<'input> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 #[repr(C)]
 pub struct Location {
-    pub line: usize,
-    pub column: usize,
-    pub index: usize,
+    pub index: u32,
 }
 
 #[derive(Debug, Clone)]

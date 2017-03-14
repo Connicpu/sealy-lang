@@ -1,5 +1,6 @@
 use ExprNode;
 use Node;
+use PatNode;
 use ScopeNode;
 
 #[derive(Debug)]
@@ -20,6 +21,6 @@ impl Default for IfChain {
 #[derive(Debug)]
 pub struct IfItem {
     pub condition: ExprNode,
-    //pub binding: Option<MatchPattern>,
+    pub pattern: Option<PatNode>,
     pub block: ScopeNode,
 }

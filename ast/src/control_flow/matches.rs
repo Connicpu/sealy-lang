@@ -4,10 +4,18 @@ use Node;
 use TypeName;
 use sym::Sym;
 
+pub type PatNode = Node<MatchPattern>;
+
 #[derive(Debug)]
 pub struct Match {
     pub expression: ExprNode,
-    pub patterns: Vec<MatchPattern>,
+    pub items: Vec<MatchItem>,
+}
+
+#[derive(Debug)]
+pub struct MatchItem {
+    pub pattern: PatNode,
+    pub result: ExprNode,
 }
 
 #[derive(Debug)]

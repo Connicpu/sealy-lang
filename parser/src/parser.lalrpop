@@ -276,19 +276,19 @@ DeclPattern: ast::DeclPattern = {
 Expression = Node<InnerExpression>;
 
 InnerExpression: ast::Expression = {
-    Box<Scope> => ast::Expression::Scope(<>),
-    Box<Lambda> => ast::Expression::Lambda(<>),
     BinaryOperators,
-    
     AssignmentOp,
     Throw,
     Break,
     Continue,
     Return,
+
+    Box<Scope> => ast::Expression::Scope(<>),
+    Box<Lambda> => ast::Expression::Lambda(<>),
     Box<IfExpression> => ast::Expression::If(<>),
-    Box<MatchExpression> => ast::Expression::Literal(Box::new(ast::Literal::Nil)),
-    Box<LoopExpression> => ast::Expression::Literal(Box::new(ast::Literal::Nil)),
-    Box<WhileExpression> => ast::Expression::Literal(Box::new(ast::Literal::Nil)),
+    Box<MatchExpression> => ast::Expression::Match(<>),
+    Box<LoopExpression> => ast::Expression::Loop(<>),
+    Box<WhileExpression> => ast::Expression::While(<>),
     Box<ForExpression> => ast::Expression::For(<>),
 };
 
@@ -342,19 +342,18 @@ IfExpression: ast::IfChain = {
 };
 
 IfChain: ast::IfChain = {
-    "if" <Node<(Expression Scope ElseTail?)>> => {
-        let node = <>;
-        let (l, (c, s, t), r) = node.unwrap();
+    "if" <Node<(("let" <MatchPattern> "=")? Expression Scope)>> <ElseTail?> => {
+        let (node, t) = (<>);
+        let (l, (p, c, s), r) = node.unwrap();
         let item = ast::IfItem {
             condition: c,
-            //binding: None,
+            pattern: p,
             block: s,
         };
         let mut chain = t.unwrap_or_default();
         chain.items.push((l, item, r).into());
         chain
     },
-    "if" "let" <MatchPattern> "=" <Expression> <Scope> <ElseTail?> => unimplemented!(),
 };
 
 ElseTail: ast::IfChain = {
@@ -367,12 +366,24 @@ ElseTail: ast::IfChain = {
     },
 };
 
-MatchExpression: () = {
-    "match" Expression "{" Comma<MatchItem> "}" => (),
+MatchExpression: ast::Match = {
+    "match" <Expression> "{" <Comma<MatchItem>> "}" => {
+        let (e, i) = (<>);
+        ast::Match {
+            expression: e,
+            items: i,
+        }   
+    },
 };
 
-MatchItem: () = {
-    <MatchPattern> "=>" <Expression> => (),
+MatchItem: ast::MatchItem = {
+    <MatchPattern> "=>" <Expression> => {
+        let (p, r) = (<>);
+        ast::MatchItem {
+            pattern: p,
+            result: r,
+        }   
+    },
 };
 
 MatchPattern = Node<MatchPatternInner>;
@@ -401,13 +412,27 @@ MatchPatternInner: ast::MatchPattern = {
     "<" <Comma<MatchPattern>> ">" => ast::MatchPattern::Simd(<>),
 };
 
-LoopExpression: () = {
-    (Identifier ":")? "loop" Scope => (),
+LoopExpression: ast::Loop = {
+    <(<Identifier> ":")?> "loop" <Scope> => {
+        let (l, s) = (<>);
+        ast::Loop {
+            label: l,
+            block: s,
+        }
+    },
 };
 
-WhileExpression: () = {
-    (Identifier ":")? "while" Expression Scope LoopElse? => (),
-    (Identifier ":")? "while" "let" MatchPattern "=" Expression Scope LoopElse? => (),
+WhileExpression: ast::While = {
+    <(<Identifier> ":")?> "while" <("let" <MatchPattern> "=")?> <Expression> <Scope> <LoopElse?> => {
+        let (label, pattern, expr, scope, tail) = (<>);
+        ast::While {
+            label: label,
+            pattern: pattern,
+            expression: expr,
+            block: scope,
+            else_block: tail,
+        }
+    },
 };
 
 ForExpression: ast::ForLoop = {

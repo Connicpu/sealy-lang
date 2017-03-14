@@ -1,30 +1,34 @@
-use super::AssignOp;
-use super::BinOp;
-use super::ForLoop;
-use super::IfChain;
-use super::Lambda;
-use super::Literal;
-use super::ScopeNode;
+use AssignOp;
+use BinOp;
+use ForLoop;
+use IfChain;
+use Lambda;
+use Literal;
+use Loop;
+use Match;
+use ScopeNode;
+use While;
 use sym::Sym;
 
 pub type ExprNode = super::Node<Expression>;
 
 #[derive(Debug)]
 pub enum Expression {
+    NamedReference(Sym),
     Literal(Box<Literal>),
     UserSuffix(Box<UserSuffix>),
-    NamedReference(Sym),
-    EmptyTuple,
+    Lambda(Box<Lambda>),
     Tuple(Box<Vec<ExprNode>>),
+    EmptyTuple,
+
     MemberAccess(Box<MemberAccess>),
     TupleAccess(Box<TupleAccess>),
     ArrayIndex(Box<ArrayIndex>),
     FunctionCall(Box<FunctionCall>),
 
-    Scope(Box<ScopeNode>),
-    Lambda(Box<Lambda>),
     BinaryOp(Box<BinaryOp>),
     AssignmentOp(Box<AssignmentOp>),
+
     Throw(Box<ExprNode>),
     Break(Box<Break>),
     Continue(Box<Continue>),
@@ -33,8 +37,12 @@ pub enum Expression {
     Not(Box<ExprNode>),
     Try(Box<ExprNode>),
 
+    Scope(Box<ScopeNode>),
     For(Box<ForLoop>),
     If(Box<IfChain>),
+    Loop(Box<Loop>),
+    Match(Box<Match>),
+    While(Box<While>),
 }
 
 #[derive(Debug)]

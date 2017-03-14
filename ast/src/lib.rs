@@ -44,7 +44,7 @@ impl<T> Node<T> {
     }
 
     pub fn span<'s>(&self, src: &'s str) -> &'s str {
-        &src[self.start.index..self.end.index]
+        &src[self.start.index as usize..self.end.index as usize]
     }
 }
 
