@@ -23,21 +23,11 @@ impl[T] Option[T] {
     }
 }
 
-impl[t] ops::LogicalOr[Option[T]] for Option[T] {
-    type Output = Option[T];
-    // TODO: make better vscode syntax highlighting so I can get rid of this damn semicolon :p
-
-    fn logical_or(self, rhs: Option[T]) -> Self::Output {
-        self.or(rhs)
-    }
-}
-
 fn main() {
     let w: Option[i32] = Some(5)
     let x: Option[i32] = Option::[i32]::Some(6)
     let y = Some(7)
 
     let z: i32 = w.or(x).or(y).unwrap()
-    let z2 = (w || x || y).unwrap()
 }
 
