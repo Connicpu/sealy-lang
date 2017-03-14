@@ -25,6 +25,6 @@ pub struct ArraySplat {
 
 #[derive(Debug)]
 pub struct ObjectLiteral {
-    pub type_constructor: Option<TypeName>,
+    pub type_constructor: TypeName,
     pub fields: BTreeMap<Sym, Option<ExprNode>>,
 }

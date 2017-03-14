@@ -67,17 +67,17 @@ InnerItem: ast::ItemKind = {
 };
 
 UseImport: ast::UseImport = {
-    "use" <TypeName> => ast::UseImport {
+    "use" <PlainTypeName> => ast::UseImport {
         base: <>,
         glob: false,
         multi: vec![],
     },
-    "use" <TypeName> "." "*" => ast::UseImport {
+    "use" <PlainTypeName> "::" "*" => ast::UseImport {
         base: <>,
         glob: true,
         multi: vec![],
     },
-    "use" <TypeName> "." "(" <Comma<Identifier>> ")" => {
+    "use" <PlainTypeName> "::" "{" <Comma<Identifier>> "}" => {
         let (b, m) = (<>);
         ast::UseImport {
             base: b,
@@ -245,10 +245,11 @@ Statement: ast::Statement = {
 };
 
 VariableDecl: ast::VariableDecl = {
-    "let" <DeclPattern> <("=" <Expression>)?> => {
-        let (p, e) = (<>);
+    "let" <DeclPattern> <TypeBound?> <("=" <Expression>)?> => {
+        let (p, t, e) = (<>);
         ast::VariableDecl {
             pattern: p,
+            type_bound: t,
             expression: e,
         }
     },
@@ -584,17 +585,84 @@ DereferenceImp<N>: ast::Expression = {
             indices: rhs,
         }))
     },
+    <Node<Dereference>> "::" <Identifier> => {
+        let (lhs, rhs) = (<>);
+        ast::Expression::ScopeResolution(Box::new(ast::ScopeResolution {
+            lhs: lhs,
+            rhs: rhs,
+        }))
+    },
+    <Node<Dereference>> "::" "[" <Comma<TypeName>> "]" => {
+        let (lhs, rhs) = (<>);
+        ast::Expression::ScopeGeneric(Box::new(ast::ScopeGeneric {
+            lhs: lhs,
+            generics: rhs,
+        }))
+    },
     N,
 };
 
 #[inline]
-TypeName: ast::TypeName = {
-    (<Identifier> ".")* Identifier => {
+PlainTypeName: ast::TypeName = {
+    (<PlainTypePart> "::")* PlainTypePart => {
         let (mut v, i) = (<>);
         v.push(i);
         ast::TypeName {
             parts: v,
+            bounds: vec![],
         }
+    }
+};
+
+#[inline]
+PlainTypePart: ast::TypePart = {
+    Identifier => {
+        let n = <>;
+        ast::TypePart {
+            name: n,
+            generics: vec![],
+        }
+    }
+};
+
+#[inline]
+TypeName: ast::TypeName = {
+    (<TypePart> "::")* TypePart => {
+        let (mut v, i) = (<>);
+        v.push(i);
+        ast::TypeName {
+            parts: v,
+            bounds: vec![],
+        }
+    },
+};
+
+#[inline]
+TypePart: ast::TypePart = {
+    <Identifier> <("[" <Comma<TypeName>> "]")?> => {
+        let (n, g) = (<>);
+        ast::TypePart {
+            name: n,
+            generics: g.unwrap_or(vec![]),
+        }
+    }
+};
+
+TypeBound = ":" <TypeName>;
+
+TypeBounds: Vec<ast::TypeName> = {
+    ":" <(<TypeName> "+")*> <TypeName> => {
+        let (mut v, t) = (<>);
+        v.push(t);
+        v
+    }
+};
+
+GenericTypeName: ast::TypeName = {
+    TypeName TypeBounds? => {
+        let (mut t, b) = (<>);
+        t.bounds = b.unwrap_or(vec![]);
+        t
     },
 };
 
@@ -639,7 +707,7 @@ SimpleLiteral: ast::Literal = {
 };
 
 ObjectLiteral: ast::Literal = {
-    "new" <TypeName?> "{" <Comma<ObjectLiteralItem>> "}" => {
+    "new" <TypeName> "{" <Comma<ObjectLiteralItem>> "}" => {
         let (ty, items) = (<>);
         let mut map = BTreeMap::new();
         for (k, v) in items {
@@ -787,6 +855,7 @@ extern {
         "," => (TT::Comma, <&'input str>),
         "?" => (TT::Question, <&'input str>),
         "." => (TT::Dot, <&'input str>),
+        "::" => (TT::Scope, <&'input str>),
         "=>" => (TT::FatArrow, <&'input str>),
 
         ".." => (TT::RangeExclusive, <&'input str>),

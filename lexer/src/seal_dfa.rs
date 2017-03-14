@@ -198,6 +198,8 @@ pub fn create_dfa() -> Dfa<TT, char> {
     dfa.insert_string(root, ",".chars(), TT::Comma);
     dfa.insert_string(root, "?".chars(), TT::Question);
     dfa.insert_string(root, ".".chars(), TT::Dot);
+    dfa.insert_string(root, "::".chars(), TT::Scope);
+    dfa.insert_string(root, "->".chars(), TT::Arrow);
     dfa.insert_string(root, "=>".chars(), TT::FatArrow);
 
     dfa.insert_string(root, "..".chars(), TT::RangeExclusive);

@@ -1,5 +1,6 @@
-use super::ExprNode;
-use super::Node;
+use ExprNode;
+use Node;
+use TypeName;
 use std::collections::BTreeMap;
 use sym::Sym;
 
@@ -12,6 +13,7 @@ pub enum Statement {
 #[derive(Debug)]
 pub struct VariableDecl {
     pub pattern: DeclPattern,
+    pub type_bound: Option<TypeName>,
     pub expression: Option<ExprNode>,
 }
 

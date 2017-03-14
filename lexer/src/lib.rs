@@ -164,6 +164,9 @@ impl<'input> Iterator for Lexer<'input> {
                         if let Some(prev) = self.prev {
                             match prev {
                                 TokenType::Dot => continue,
+                                TokenType::Scope => continue,
+                                TokenType::Arrow => continue,
+                                TokenType::FatArrow => continue,
                                 TokenType::NewLine => continue,
                                 TokenType::OpenCurly => continue,
                                 TokenType::Semicolon => continue,
@@ -206,7 +209,9 @@ impl<'input> Iterator for Lexer<'input> {
                             if let Ok((_, (tt, _), _)) = *next {
                                 match tt {
                                     TokenType::Dot => continue,
-                                    //TokenType::CloseCurly => continue,
+                                    TokenType::Scope => continue,
+                                    TokenType::Arrow => continue,
+                                    TokenType::FatArrow => continue,
                                     TokenType::Else => continue,
                                     TokenType::Semicolon => continue,
 
@@ -335,6 +340,8 @@ pub enum TokenType {
     Comma,
     Question,
     Dot,
+    Scope,
+    Arrow,
     FatArrow,
 
     RangeExclusive,

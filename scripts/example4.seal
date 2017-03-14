@@ -1,0 +1,18 @@
+@derive(Eq, Ord)
+enum Option[T] {
+    Some(T),
+    None,
+}
+
+impl[T] Option[T] {
+    fn unwrap(self)? -> T {
+        match self {
+            Some(val) => val,
+            None => panic("Unwrapped None"),
+        }
+    }
+}
+
+fn main() {
+    let x: Option[i32] = Option::[i32]::Some(6)
+}

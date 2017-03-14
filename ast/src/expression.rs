@@ -7,6 +7,7 @@ use Literal;
 use Loop;
 use Match;
 use ScopeNode;
+use TypeName;
 use While;
 use sym::Sym;
 
@@ -25,6 +26,8 @@ pub enum Expression {
     TupleAccess(Box<TupleAccess>),
     ArrayIndex(Box<ArrayIndex>),
     FunctionCall(Box<FunctionCall>),
+    ScopeResolution(Box<ScopeResolution>),
+    ScopeGeneric(Box<ScopeGeneric>),
 
     BinaryOp(Box<BinaryOp>),
     AssignmentOp(Box<AssignmentOp>),
@@ -98,4 +101,16 @@ pub struct Continue {
 pub struct Break {
     pub label: Option<Sym>,
     pub value: Option<ExprNode>,
+}
+
+#[derive(Debug)]
+pub struct ScopeResolution {
+    pub lhs: ExprNode,
+    pub rhs: Sym,
+}
+
+#[derive(Debug)]
+pub struct ScopeGeneric {
+    pub lhs: ExprNode,
+    pub generics: Vec<TypeName>,
 }
