@@ -99,9 +99,10 @@ ExternImport: ast::ExternImport = {
 };
 
 Impl: ast::Impl = {
-    "impl" <(<Node<TypeName>> "for")?> <Node<TypeName>> "{" <Node<Module>> "}" => {
-        let (t, i, m) = (<>);
+    "impl" <GenericBoundList?> <(<Node<TypeName>> "for")?> <Node<TypeName>> "{" <Node<Module>> "}" => {
+        let (g, t, i, m) = (<>);
         ast::Impl {
+            generics: g.unwrap_or(vec![]),
             impl_type: i,
             interface: t,
             items: m,
@@ -110,16 +111,22 @@ Impl: ast::Impl = {
 };
 
 TypeDecl: ast::TypeDecl = {
-    "type" <Identifier> => ast::TypeDecl {
-        name: <>
+    "type" <Identifier> <GenericBoundList?> "=" <TypeName> => {
+        let (n, g, d) = (<>);
+        ast::TypeDecl {
+            name: n,
+            generics: g.unwrap_or(vec![]),
+            def: d,
+        }
     },
 };
 
 StructDecl: ast::StructDecl = {
-    "struct" <Identifier> "{" <StructMembers> "}" => {
-        let (name, members) = (<>);
+    "struct" <Identifier> <GenericBoundList?> "{" <StructMembers> "}" => {
+        let (name, generics, members) = (<>);
         ast::StructDecl {
             name: name,
+            generics: generics.unwrap_or(vec![]),
             members: members,
         }   
     },
@@ -138,10 +145,11 @@ StructMember: ast::StructItem = {
 };
 
 EnumDecl: ast::EnumDecl = {
-    "enum" <Identifier> "{" <EnumItems> "}" => {
-        let (name, members) = (<>);
+    "enum" <Identifier> <GenericBoundList?> "{" <EnumItems> "}" => {
+        let (name, generics, members) = (<>);
         ast::EnumDecl {
             name: name,
+            generics: generics.unwrap_or(vec![]),
             members: members,
         }   
     },
@@ -161,10 +169,11 @@ EnumItem: ast::EnumItem = {
 };
 
 TraitDecl: ast::TraitDecl = {
-    "trait" <Identifier> "{" <TraitItems> "}" => {
-        let (name, members) = (<>);
+    "trait" <Identifier> <GenericBoundList?> "{" <TraitItems> "}" => {
+        let (name, generics, members) = (<>);
         ast::TraitDecl {
             name: name,
+            generics: generics.unwrap_or(vec![]),
             members: members,
         }
     },
@@ -173,55 +182,79 @@ TraitDecl: ast::TraitDecl = {
 TraitItems = LF* <(<Node<TraitItem>> End*)*>;
 
 TraitItem: ast::TraitItem = {
-    <Attributes> "fn" <Identifier> "(" <Comma<Identifier>> ")" => {
-        let (a, n, p) = (<>);
+    <Attributes> "fn" <Identifier> <GenericBoundList?> "(" <Comma<FnParam>> ")" => {
+        let (a, n, g, p) = (<>);
         ast::TraitItem {
             attributes: a,
             name: n,
-            kind: ast::TraitItemKind::Function(p),
+            kind: ast::TraitItemKind::Function {
+                parameters: p,
+                generics: g.unwrap_or(vec![]),   
+            },
         }
     },
-    <Attributes> "const" <Identifier> => {
-        let (a, n) = (<>);
+    <Attributes> "const" <Identifier> <TypeBound> => {
+        let (a, n, t) = (<>);
         ast::TraitItem {
             attributes: a,
             name: n,
-            kind: ast::TraitItemKind::Constant
+            kind: ast::TraitItemKind::Constant(t),
         }
     },
 };
 
 Constant: ast::Constant = {
-    "const" <Identifier> "=" <Expression> End => {
-        let (name, expr) = (<>);
+    "const" <Identifier> <TypeBound> "=" <Expression> End => {
+        let (name, tb, expr) = (<>);
         ast::Constant {
             name: name,
+            type_bound: tb,
             expression: expr,
         }
     },
 };
 
 Function: ast::Function = {
-    "fn" <Identifier> "(" <Comma<Identifier>> ")" <"?"?> <@R> <Scope> => {
-        let (n, p, t, e, s) = (<>);
+    "fn" <FnName> <GenericBoundList?> "(" <Comma<FnParam>> ")" <"?"?> <("->" <TypeName>)?> <@R> <Scope> => {
+        let (n, g, p, t, rt, e, s) = (<>);
         ast::Function {
             name: n,
             parameters: p,
             throws: t.is_some(),
+            return_type: rt,
+            generics: g.unwrap_or(vec![]),
             body: s,
             decl_end: e,
         }
     },
-    "fn" "new" "(" <Comma<Identifier>> ")" <"?"?> <@R> <Scope> => {
-        let (p, t, e, s) = (<>);
-        ast::Function {
-            name: syms.intern("new"),
-            parameters: p,
-            throws: t.is_some(),
-            body: s,
-            decl_end: e,
+};
+
+FnParam: ast::FnParam = {
+    "self" => {
+        ast::FnParam {
+            name: syms.intern("self"),
+            type_bound: ast::TypeName {
+                parts: vec![
+                    ast::TypePart {
+                        name: syms.intern("Self"),
+                        generics: vec![],
+                    }
+                ],
+            }
         }
     },
+    <Identifier> <TypeBound> => {
+        let (n, t) = (<>);
+        ast::FnParam {
+            name: n,
+            type_bound: t,
+        }
+    },
+};
+
+FnName: Sym = {
+    "new" => syms.intern("new"),
+    Identifier => <>,
 };
 
 Scope = Node<ScopeInner>;
@@ -609,7 +642,6 @@ PlainTypeName: ast::TypeName = {
         v.push(i);
         ast::TypeName {
             parts: v,
-            bounds: vec![],
         }
     }
 };
@@ -627,12 +659,21 @@ PlainTypePart: ast::TypePart = {
 
 #[inline]
 TypeName: ast::TypeName = {
+    "!" => {
+        ast::TypeName {
+            parts: vec![
+                ast::TypePart {
+                    name: syms.intern("!"),
+                    generics: vec![],
+                }
+            ],
+        }
+    },
     (<TypePart> "::")* TypePart => {
         let (mut v, i) = (<>);
         v.push(i);
         ast::TypeName {
             parts: v,
-            bounds: vec![],
         }
     },
 };
@@ -658,13 +699,17 @@ TypeBounds: Vec<ast::TypeName> = {
     }
 };
 
-GenericTypeName: ast::TypeName = {
-    TypeName TypeBounds? => {
-        let (mut t, b) = (<>);
-        t.bounds = b.unwrap_or(vec![]);
-        t
+GenericTypeName: ast::GenericType = {
+    Identifier TypeBounds? => {
+        let (n, b) = (<>);
+        ast::GenericType {
+            name: n,
+            bounds: b.unwrap_or(vec![]),
+        }
     },
 };
+
+GenericBoundList = "[" <Comma<GenericTypeName>> "]";
 
 Term: ast::Expression = {
     "(" <InnerExpression> ")",
@@ -756,7 +801,6 @@ FloatLiteral: f64 = {
     FLOAT_LITERAL => parse_float(<>),
 };
 
-// TODO: Parse string literal into actual string data
 StringLiteral: String = {
     STR_LITERAL => {
         parse_literal(<>).unwrap().into_owned()
@@ -774,6 +818,7 @@ ModDocComment: String = {
 
 IdentifierExpr: ast::Expression = {
     Identifier => ast::Expression::NamedReference(<>),
+    "self" => ast::Expression::NamedReference(syms.intern("self")),
 };
 
 End: () = {
@@ -837,6 +882,7 @@ extern {
         "new" => (TT::New, <&'input str>),
         "nil" => (TT::Nil, <&'input str>),
         "return" => (TT::Return, <&'input str>),
+        "self" => (TT::SelfKw, <&'input str>),
         "struct" => (TT::Struct, <&'input str>),
         "throw" => (TT::Throw, <&'input str>),
         "trait" => (TT::Trait, <&'input str>),
@@ -856,6 +902,7 @@ extern {
         "?" => (TT::Question, <&'input str>),
         "." => (TT::Dot, <&'input str>),
         "::" => (TT::Scope, <&'input str>),
+        "->" => (TT::Arrow, <&'input str>),
         "=>" => (TT::FatArrow, <&'input str>),
 
         ".." => (TT::RangeExclusive, <&'input str>),

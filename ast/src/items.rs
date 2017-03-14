@@ -1,8 +1,9 @@
-use super::ExprNode;
-use super::Literal;
-use super::Node;
-use super::ScopeNode;
-use super::TypeName;
+use ExprNode;
+use GenericType;
+use Literal;
+use Node;
+use ScopeNode;
+use TypeName;
 use lexer::Location;
 use sym::Sym;
 
@@ -61,6 +62,7 @@ pub struct ExternImport {
 #[derive(Debug)]
 pub struct Impl {
     pub impl_type: Node<TypeName>,
+    pub generics: Vec<GenericType>,
     pub interface: Option<Node<TypeName>>,
     pub items: Node<Module>,
 }
@@ -68,11 +70,14 @@ pub struct Impl {
 #[derive(Debug)]
 pub struct TypeDecl {
     pub name: Sym,
+    pub generics: Vec<GenericType>,
+    pub def: TypeName,
 }
 
 #[derive(Debug)]
 pub struct StructDecl {
     pub name: Sym,
+    pub generics: Vec<GenericType>,
     pub members: Vec<Node<StructItem>>,
 }
 
@@ -85,6 +90,7 @@ pub struct StructItem {
 #[derive(Debug)]
 pub struct EnumDecl {
     pub name: Sym,
+    pub generics: Vec<GenericType>,
     pub members: Vec<Node<EnumItem>>,
 }
 
@@ -98,6 +104,7 @@ pub struct EnumItem {
 #[derive(Debug)]
 pub struct TraitDecl {
     pub name: Sym,
+    pub generics: Vec<GenericType>,
     pub members: Vec<Node<TraitItem>>,
 }
 
@@ -110,23 +117,36 @@ pub struct TraitItem {
 
 #[derive(Debug)]
 pub enum TraitItemKind {
-    Function(Vec<Sym>),
-    Constant,
+    Function {
+        parameters: Vec<FnParam>,
+        generics: Vec<GenericType>,
+    },
+    Constant(TypeName),
+    Type(TypeName),
 }
 
 #[derive(Debug)]
 pub struct Constant {
     pub name: Sym,
+    pub type_bound: TypeName,
     pub expression: ExprNode,
 }
 
 #[derive(Debug)]
 pub struct Function {
     pub name: Sym,
-    pub parameters: Vec<Sym>,
+    pub parameters: Vec<FnParam>,
     pub body: ScopeNode,
     pub throws: bool,
+    pub return_type: Option<TypeName>,
+    pub generics: Vec<GenericType>,
     pub decl_end: Location,
+}
+
+#[derive(Debug)]
+pub struct FnParam {
+    pub name: Sym,
+    pub type_bound: TypeName,
 }
 
 #[derive(Debug)]

@@ -322,6 +322,7 @@ pub enum TokenType {
     New,
     Nil,
     Return,
+    SelfKw,
     Struct,
     Throw,
     Trait,
